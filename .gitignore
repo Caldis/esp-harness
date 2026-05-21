@@ -33,3 +33,7 @@ Thumbs.db
 # Logs / temp
 *.log
 *.tmp
+
+# Local secrets (test WiFi creds, etc.)
+.env
+.env.local

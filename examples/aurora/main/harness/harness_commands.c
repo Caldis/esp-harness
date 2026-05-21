@@ -382,13 +382,17 @@ static int cmd_radio(const console_args_t *args)
         return 0;
     }
     if (strcmp(sub, "wifi") == 0) {
-        if (ble_is_up()) {
-            ble_deinit();
+        /* Always release the BT controller pool, whether BLE was up or
+         * never initialised at boot. The pool stays reserved by kconfig
+         * defaults (BT_ENABLED=y) until something releases it; without
+         * this, WiFi can't find contiguous DRAM at init time. */
+        bool released = ble_release_memory();
+        if (ble_is_up() || released) {
             vTaskDelay(pdMS_TO_TICKS(80));
         }
-        /* Don't init wifi here — it lazy-inits on first wifi_scan call.
-         * Just signal that the BLE pool has been released. */
-        console_reply_ok("{\"mode\":\"wifi\",\"ble_up\":false}");
+        /* Don't init wifi here — it lazy-inits on first wifi_scan/connect. */
+        console_reply_ok("{\"mode\":\"wifi\",\"ble_up\":false,\"released\":%s}",
+                         released ? "true" : "false");
         return 0;
     }
     console_reply_err("radio: subcommand must be 'ble' or 'wifi' (no arg = status)");

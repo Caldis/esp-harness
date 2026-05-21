@@ -190,15 +190,32 @@ static void dispatch_line(char *line)
     while (*p == ' ' || *p == '\t') p++;
     if (*p == '\0') return;  /* empty line: ignore silently */
 
-    /* Tokenise (split on whitespace) */
+    /* Tokenise — whitespace-separated, with double-quote support so
+     * values containing spaces / apostrophes (e.g. wifi connect
+     * ssid="My Wi-Fi") survive as a single argv entry. Quotes are
+     * stripped in-place; backslash-escaping is intentionally NOT
+     * supported (keeps the parser tiny — use a different separator if
+     * you need a literal `"` in a value, which has never come up).
+     */
     console_args_t args = { .argc = 0 };
     while (*p && args.argc < CONSOLE_MAX_ARGS) {
-        args.argv[args.argc++] = p;
-        while (*p && *p != ' ' && *p != '\t') p++;
+        char *out = p;
+        args.argv[args.argc++] = out;
+        bool in_quote = false;
+        while (*p) {
+            if (!in_quote && (*p == ' ' || *p == '\t')) break;
+            if (*p == '"') {
+                in_quote = !in_quote;
+                p++;
+                continue;
+            }
+            *out++ = *p++;
+        }
         if (*p) {
             *p++ = '\0';
             while (*p == ' ' || *p == '\t') p++;
         }
+        *out = '\0';
     }
     if (args.argc == 0) return;
 

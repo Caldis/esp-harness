@@ -96,15 +96,31 @@ CONFIG_BT_NIMBLE_MEM_ALLOC_MODE_EXTERNAL=y
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=4
 CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=8
 CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=8
-CONFIG_ESP_WIFI_RX_BA_WIN=6
+# v1.7: the default static TX pool was 16 buffers × ~1700 B = ~27 KB of
+# DRAM, which by itself is bigger than our largest contiguous DRAM
+# block. Aurora doesn't TX in bulk — scan is RX-heavy, the OTA download
+# path is RX with small acks. 6 TX buffers is plenty.
+CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=6
+# v1.7: shrink the A-MPDU RX window from 6 to 2 (smallest legal). With
+# mbedtls forced into the WiFi crypto path, the original 6-slot BA
+# window pushed contiguous DRAM needs past what's free; A-MPDU at 2
+# halves the static buffer cost and the throughput hit is invisible
+# for scan / GET-image workloads.
+CONFIG_ESP_WIFI_RX_BA_WIN=2
+# Disable A-MPDU TX entirely — Aurora only does receive-heavy flows
+# (scan, https download). TX is acks + the occasional small request.
+CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=n
 # Let WiFi also park its main objects in PSRAM where possible.
 CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
 # Push small allocations (LVGL widget structs, NimBLE host pools, etc.)
 # to PSRAM. Default ALWAYSINTERNAL threshold of 16 KB kept too much in
 # internal SRAM with 9 scenes worth of widgets, blocking WiFi.
-# Anything ≤ 1 KB goes wherever the allocator picks (usually PSRAM
-# under USE_MALLOC=y); larger allocations prefer PSRAM.
-CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=1024
+# v1.7: dropped from 1024 → 128. The mbedtls + esp_https_ota pull-in
+# (forced ESP_WIFI_MBEDTLS_CRYPTO=y via kconfig select) inflated the
+# internal-SRAM working set past what wifi_init can find as a
+# contiguous block (~28 KB free, ~21 KB largest). Routing 128 B+ allocs
+# to PSRAM frees enough contiguous DRAM for the WiFi static pool.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=128
 
 # ── OTA (v1.7) ────────────────────────────────────────────────────────
 # Bootloader rollback: if the freshly-OTA'd image fails to call
@@ -122,3 +138,14 @@ CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS=y
 # against a local http(s) server without trust-store ceremony. Real
 # deployments should bundle a CA bundle and set =n.
 CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y
+# Pulling esp_https_ota auto-enables ESP_WIFI_MBEDTLS_CRYPTO=y, which
+# routes WiFi crypto through mbedtls and lifts WiFi's contiguous
+# internal-SRAM requirement past what Aurora has free (LVGL + sim base
+# eat the budget). Revert to WiFi's own crypto stack so the radio still
+# initialises after boot.
+CONFIG_ESP_WIFI_MBEDTLS_CRYPTO=n
+CONFIG_ESP_WIFI_MBEDTLS_TLS_CLIENT=n
+# And let mbedtls itself allocate out of PSRAM so https-OTA TLS contexts
+# don't fight WiFi for DRAM.
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+CONFIG_MBEDTLS_INTERNAL_MEM_ALLOC=n

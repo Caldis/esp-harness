@@ -38,9 +38,14 @@ static bool s_inited = false;
 static EventGroupHandle_t      s_evt_group = NULL;
 static esp_event_handler_instance_t s_h_wifi  = NULL;
 static esp_event_handler_instance_t s_h_ip    = NULL;
-static volatile bool           s_connected   = false;
-static int                     s_retry       = 0;
+static volatile bool           s_connected     = false;
+static int                     s_retry         = 0;
 #define MAX_CONNECT_RETRIES    3
+/* Distinguishes a user-requested disconnect (wifi_disconnect / forget)
+ * from an unsolicited link drop. The disconnect-event handler must
+ * suppress its 3-retry auto-reconnect when this flag is set, otherwise
+ * the device immediately re-associates and the user's intent is lost. */
+static volatile bool           s_user_disconnect = false;
 static char                    s_active_ssid[33] = {0};
 static volatile int8_t         s_last_rssi   = 0;
 static volatile uint32_t       s_ip_addr     = 0;
@@ -197,7 +202,10 @@ static void wifi_event_cb(void *arg, esp_event_base_t base, int32_t id, void *da
             s_ip_addr   = 0;
             s_gw_addr   = 0;
             s_netmask   = 0;
-            if (s_retry < MAX_CONNECT_RETRIES) {
+            if (s_user_disconnect) {
+                ESP_LOGI(TAG, "disconnect → user-requested, not retrying");
+                /* Leave s_user_disconnect set; cleared on next connect. */
+            } else if (s_retry < MAX_CONNECT_RETRIES) {
                 s_retry++;
                 ESP_LOGI(TAG, "disconnect → retry %d/%d", s_retry, MAX_CONNECT_RETRIES);
                 esp_wifi_connect();
@@ -267,8 +275,9 @@ bool wifi_connect(const char *ssid, const char *pass, int timeout_ms)
 
     /* Stash for status reporting BEFORE we kick the radio. */
     strlcpy(s_active_ssid, ssid, sizeof(s_active_ssid));
-    s_retry     = 0;
-    s_connected = false;
+    s_retry            = 0;
+    s_connected        = false;
+    s_user_disconnect  = false;  /* fresh attempt — re-enable auto-retry */
     xEventGroupClearBits(s_evt_group, WIFI_BIT_CONNECTED | WIFI_BIT_FAIL);
 
     esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &cfg);
@@ -293,6 +302,10 @@ bool wifi_connect(const char *ssid, const char *pass, int timeout_ms)
 bool wifi_disconnect(void)
 {
     if (!s_inited) return true;
+    /* Set the user-intent flag BEFORE calling esp_wifi_disconnect so
+     * the event handler (runs on the wifi-event task) sees it when the
+     * disconnect event fires, and skips the auto-retry path. */
+    s_user_disconnect = true;
     esp_err_t err = esp_wifi_disconnect();
     s_connected = false;
     s_ip_addr   = 0;

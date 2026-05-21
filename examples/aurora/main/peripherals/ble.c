@@ -173,6 +173,24 @@ bool ble_init(void)
 
 bool ble_is_up(void) { return s_inited; }
 
+bool ble_release_memory(void)
+{
+    /* If BLE is initialised, full deinit chain handles the release. */
+    if (s_inited) return ble_deinit();
+    /* Otherwise just release the controller-side pool. The controller
+     * was never enabled, so we can skip disable/deinit and jump
+     * straight to the memory release. */
+    esp_err_t mr = esp_bt_mem_release(ESP_BT_MODE_BTDM);
+    if (mr != ESP_OK && mr != ESP_ERR_INVALID_STATE) {
+        /* INVALID_STATE = already released; treat as idempotent OK. */
+        ESP_LOGW(TAG, "esp_bt_mem_release (no-init path): %s",
+                 esp_err_to_name(mr));
+        return false;
+    }
+    ESP_LOGI(TAG, "ble controller pool released (no-init path)");
+    return true;
+}
+
 bool ble_deinit(void)
 {
     if (!s_inited) return true;
