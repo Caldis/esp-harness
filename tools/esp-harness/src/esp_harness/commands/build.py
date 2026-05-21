@@ -12,7 +12,7 @@ import re
 import time
 from pathlib import Path
 
-from esp_harness.core import idf_runner
+from esp_harness.core import idf_runner, patches
 from esp_harness.exit_codes import BUILD_FAILED, OK, PROJECT_NOT_FOUND
 from esp_harness.output import Output
 
@@ -97,6 +97,13 @@ def run(args: argparse.Namespace, output: Output) -> int:
         if live_print:
             print(line)
 
+    # Pre-build: apply known managed_components patches if managed_components
+    # already exists from a previous reconfigure (idempotent).
+    pre_patches = patches.apply_all(project)
+    applied_pre = [p["name"] for p in pre_patches if p["applied"]]
+    if applied_pre:
+        output.info(f"applied pre-build patches: {', '.join(applied_pre)}")
+
     try:
         returncode, all_lines = idf_runner.run_idf_streaming(
             ["build"], project_dir=project, on_line=on_line
@@ -104,6 +111,25 @@ def run(args: argparse.Namespace, output: Output) -> int:
     except idf_runner.EnvError as e:
         output.failure(exit_code=100, error=str(e))
         return 100
+
+    # If we hit a known upstream issue (e.g. qmi8658 needing the i2c_master
+    # split-out fix), apply patches and retry once. The first build typically
+    # populates managed_components/ before failing — after the patches land,
+    # the second pass succeeds.
+    if returncode != 0:
+        stderr_blob = "\n".join(all_lines)
+        if patches.stderr_suggests_retry(stderr_blob):
+            retry_results = patches.apply_all(project)
+            applied = [p["name"] for p in retry_results if p["applied"]]
+            if applied:
+                output.info(f"applied post-failure patches: {', '.join(applied)}, retrying build")
+                try:
+                    returncode, all_lines = idf_runner.run_idf_streaming(
+                        ["build"], project_dir=project, on_line=on_line
+                    )
+                except idf_runner.EnvError as e:
+                    output.failure(exit_code=100, error=str(e))
+                    return 100
 
     elapsed_ms = int((time.monotonic() - started) * 1000)
 

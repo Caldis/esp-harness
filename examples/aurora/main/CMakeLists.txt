@@ -32,6 +32,7 @@ idf_component_register(
         "peripherals/keys.c"
         "peripherals/sdcard.c"
         "peripherals/wifi.c"
+        "peripherals/wifi_creds.c"
         "peripherals/ble.c"
         "peripherals/system.c"
         "peripherals/settings.c"
@@ -75,6 +76,12 @@ idf_component_register(
         esp_hw_support
         driver
         spi_flash
+        # Real-OTA path: esp_https_ota wraps esp_https_ota_perform() over
+        # esp_http_client; both are needed at link time. mbedtls is pulled
+        # in transitively for TLS validation of the firmware host.
+        esp_https_ota
+        esp_http_client
+        mbedtls
         # ESP32-S3 SoC has an internal temperature sensor; the driver
         # split out into its own component in IDF v5+.
         esp_driver_tsens

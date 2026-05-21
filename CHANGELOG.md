@@ -6,6 +6,71 @@ Repo-level milestones. Per-artifact changelogs live in:
 - [`tools/esp-harness/CHANGELOG.md`](./tools/esp-harness/CHANGELOG.md) (toolkit history; preserved from `esp32-harness-toolkit`)
 - [`examples/aurora/CHANGELOG.md`](./examples/aurora/CHANGELOG.md) (Aurora demo history)
 
+## [1.7.0] — 2026-05-22
+
+**Connectivity + real OTA.** Closes the gap between the v1.6 `?ota` skeleton
+(info / mark-valid / rollback only) and a device that can actually pull a
+new image over the air. Pairs with WiFi STA connect + NVS-backed
+credential persistence so the loop is one command per side: connect once,
+then `?ota download url=…` whenever a new build lands.
+
+### Aurora firmware
+
+- **`examples/aurora/main/peripherals/wifi_creds.{h,c}`** — NVS-backed
+  credential store in namespace `wifi_cred`. Five-function API
+  (`init` / `set` / `get` / `has` / `forget`). Credentials are stored as
+  plaintext; NVS encryption is an opt-in via menuconfig for shipping
+  builds.
+- **`examples/aurora/main/peripherals/wifi.c`** — added STA-mode connect
+  path alongside the existing scan. New API:
+  - `wifi_connect(ssid, pass, timeout_ms) → bool` (event-group +
+    `IP_EVENT_STA_GOT_IP` gate, 3 automatic retries on disconnect)
+  - `wifi_disconnect()`, `wifi_is_connected()`, `wifi_get_status()`
+- **`harness/harness_commands.c`** — `wifi` command rewritten as
+  multi-subcommand dispatcher: `scan` / `connect ssid=… pass=… save=1` /
+  `disconnect` / `forget` / `status`. `?ota` gains `download url=…`
+  implemented via `esp_https_ota` streaming with integer-percent EVT
+  progress emission. `?ota download` does *not* auto-reboot — the host
+  decides when to flip slots (so the AI can screenshot, status-check,
+  and then `?reset`).
+- **`partitions.csv`** — switched from `factory 8M + storage 7M` to dual
+  `ota_0 5M + ota_1 5M + storage 5M`. `otadata` (2 sectors) added.
+- **`sdkconfig.defaults`** — added
+  `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y`,
+  `CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS=y`, plus dev-friendly
+  `CONFIG_OTA_ALLOW_HTTP=y` and `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y`
+  (production should disable both and bundle a CA cert).
+
+### Toolkit + build infra
+
+- **`tools/esp-harness/src/esp_harness/core/patches.py`** — new module
+  centralizing `managed_components/` patches. Exports
+  `apply_all(project_dir)`, `KNOWN_PATCHES`, `RETRY_SIGNATURES`,
+  `stderr_suggests_retry(stderr)`. First entry: the `waveshare__qmi8658`
+  upstream bug pair (missing `esp_driver_i2c` REQUIRES + `M_PI` without
+  `#ifndef` guard).
+- **`build.py`** — applies patches pre-build (idempotent); on failure
+  inspects stderr for known retry signatures and retries once. Documents
+  the patches that were applied in the build output.
+- **`examples/aurora/CMakeLists.txt`** — `esp_harness_apply_known_patches()`
+  CMake function as a project-local fallback. Detects + patches
+  `managed_components/waveshare__qmi8658/{CMakeLists.txt,qmi8658.h}`
+  during configure. Idempotent via signature checks. Means a fresh
+  clone builds without needing the toolkit at all.
+
+### Verification
+
+- target build: clean rebuild 65.5s, 0 warnings, all artifacts produced
+- sim diff: 13 / 13 scenes identical (no UI regression)
+- pytest: 3 / 3 passing (doctor / manifest / sim-diff)
+- manifest: 17 toolkit commands surfaced
+
+### Deferred to v1.8
+
+- BLE-peripheral WiFi provisioning UI (NimBLE GATT receiver writing to
+  the v1.7 `wifi_creds` API). API surface is ready; only the BLE side is
+  missing.
+
 ## [1.6.0] — 2026-05-22
 
 **Project maturity polish.** Documentation, branding, and onboarding

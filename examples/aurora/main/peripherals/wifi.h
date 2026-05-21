@@ -39,6 +39,38 @@ int  wifi_scan(wifi_ap_t *out, int max_out, int timeout_ms);
 /* Short auth-mode label for JSON ("open", "wpa2", "wpa3", etc). */
 const char *wifi_auth_label(uint8_t authmode);
 
+/* ── Station-mode connect / status (v1.7+) ─────────────────────────
+ *
+ * The connect path lives separately from scan because it needs an
+ * event-loop subscriber + an IP-acquisition gate. After wifi_connect
+ * succeeds, the device is on the network until wifi_disconnect or
+ * reboot.
+ */
+
+typedef struct {
+    bool      configured;        /* credentials present (whether or not connected) */
+    bool      connected;         /* link up + IP acquired */
+    char      ssid[33];          /* currently-connected SSID (empty if not) */
+    int8_t    rssi;              /* last reported RSSI, 0 if not connected */
+    uint32_t  ip_addr;           /* IPv4 little-endian (0 if not connected) */
+    uint32_t  gw_addr;
+    uint32_t  netmask;
+} wifi_status_t;
+
+/* Connect to (ssid, pass). Blocks up to timeout_ms waiting for IP_GOT.
+ * `pass` may be NULL or "" for open networks. Returns true on
+ * acquisition of IP. */
+bool wifi_connect(const char *ssid, const char *pass, int timeout_ms);
+
+/* Disconnect from the current AP. Returns true on clean stop. */
+bool wifi_disconnect(void);
+
+/* True if currently link-up + IP acquired. */
+bool wifi_is_connected(void);
+
+/* Read status snapshot into caller-provided struct. */
+void wifi_get_status(wifi_status_t *out);
+
 #ifdef __cplusplus
 }
 #endif

@@ -26,6 +26,8 @@
 #include "esp_timer.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
+#include "esp_http_client.h"
+#include "esp_https_ota.h"
 
 #include "lvgl.h"
 #include "bsp/esp-bsp.h"  /* full BSP API including bsp_display_lock/unlock */
@@ -41,6 +43,7 @@
 #include "peripherals/audio.h"
 #include "peripherals/sdcard.h"
 #include "peripherals/wifi.h"
+#include "peripherals/wifi_creds.h"
 #include "peripherals/ble.h"
 #include "peripherals/keys.h"
 #include "peripherals/system.h"
@@ -437,16 +440,8 @@ static int cmd_ble(const console_args_t *args)
 
 /* ── wifi ─────────────────────────────────────────────────────────── */
 
-static int cmd_wifi(const console_args_t *args)
+static int wifi_subcmd_scan(const console_args_t *args)
 {
-    if (args->argc < 2) {
-        console_reply_err("usage: wifi scan [TIMEOUT_MS [TOP_N]]");
-        return 1;
-    }
-    if (strcmp(args->argv[1], "scan") != 0) {
-        console_reply_err("wifi: unknown subcommand '%s' (try: scan)", args->argv[1]);
-        return 1;
-    }
     int timeout_ms = args->argc >= 3 ? atoi(args->argv[2]) : 600;
     int top_n      = args->argc >= 4 ? atoi(args->argv[3]) : 8;
     if (top_n < 1)  top_n = 1;
@@ -460,9 +455,6 @@ static int cmd_wifi(const console_args_t *args)
         console_reply_err("wifi_scan failed (n=%d, elapsed=%lldms)", n, elapsed_ms);
         return 1;
     }
-
-    /* Inline-build the JSON array.  Each AP line is conservatively
-     * ~90 chars; cap output to avoid blowing the console line. */
     char buf[1400];
     int off = 0;
     off += snprintf(buf + off, sizeof(buf) - off,
@@ -471,14 +463,132 @@ static int cmd_wifi(const console_args_t *args)
         off += snprintf(buf + off, sizeof(buf) - off,
                         "%s{\"ssid\":\"%s\",\"rssi\":%d,\"ch\":%d,\"auth\":\"%s\"}",
                         i == 0 ? "" : ",",
-                        aps[i].ssid,
-                        (int)aps[i].rssi,
-                        (int)aps[i].channel,
+                        aps[i].ssid, (int)aps[i].rssi, (int)aps[i].channel,
                         wifi_auth_label(aps[i].authmode));
     }
     snprintf(buf + off, sizeof(buf) - off, "]}");
     console_reply_ok("%s", buf);
     return 0;
+}
+
+/* Parse `key=value` arg list. Returns ptr into argv[i]+len if matched. */
+static const char *kv_lookup(const console_args_t *args, const char *key)
+{
+    size_t kl = strlen(key);
+    for (int i = 1; i < args->argc; ++i) {
+        const char *a = args->argv[i];
+        if (strncmp(a, key, kl) == 0 && a[kl] == '=') return a + kl + 1;
+    }
+    return NULL;
+}
+
+static int wifi_subcmd_connect(const console_args_t *args)
+{
+    /* Usage: wifi connect ssid=NAME [pass=PASS] [save=1] [timeout=MS]
+     * If no ssid= given, try stored credentials. */
+    const char *ssid    = kv_lookup(args, "ssid");
+    const char *pass    = kv_lookup(args, "pass");
+    const char *save    = kv_lookup(args, "save");
+    const char *to_str  = kv_lookup(args, "timeout");
+    int timeout_ms = to_str ? atoi(to_str) : 10000;
+
+    char stored_ssid[WIFI_CRED_SSID_MAX];
+    char stored_pass[WIFI_CRED_PASS_MAX];
+    if (!ssid) {
+        if (!wifi_creds_get(stored_ssid, sizeof(stored_ssid),
+                            stored_pass, sizeof(stored_pass))) {
+            console_reply_err("connect: no ssid= given and no stored creds");
+            return 1;
+        }
+        ssid = stored_ssid;
+        pass = stored_pass;
+    }
+
+    int64_t t0 = esp_timer_get_time();
+    bool ok = wifi_connect(ssid, pass, timeout_ms);
+    int64_t elapsed_ms = (esp_timer_get_time() - t0) / 1000;
+
+    if (!ok) {
+        console_reply_err("connect ssid=%s elapsed=%lldms — no IP", ssid, elapsed_ms);
+        return 1;
+    }
+
+    /* Persist on success if requested or if we were using freshly-supplied
+     * creds (heuristic: save=1 explicit, OR pass was supplied — implies
+     * user just typed credentials and we shouldn't lose them on reboot). */
+    bool want_save = (save && atoi(save) != 0) || (pass != NULL && pass[0] != '\0' && save == NULL);
+    if (want_save) {
+        wifi_creds_set(ssid, pass ? pass : "");
+    }
+
+    wifi_status_t st;
+    wifi_get_status(&st);
+    char ip[16] = "0.0.0.0";
+    snprintf(ip, sizeof(ip), "%lu.%lu.%lu.%lu",
+             (unsigned long)((st.ip_addr      ) & 0xFF),
+             (unsigned long)((st.ip_addr >>  8) & 0xFF),
+             (unsigned long)((st.ip_addr >> 16) & 0xFF),
+             (unsigned long)((st.ip_addr >> 24) & 0xFF));
+    console_reply_ok("{\"connected\":true,\"ssid\":\"%s\",\"ip\":\"%s\","
+                     "\"rssi\":%d,\"elapsed_ms\":%lld,\"saved\":%s}",
+                     st.ssid, ip, (int)st.rssi, elapsed_ms,
+                     want_save ? "true" : "false");
+    return 0;
+}
+
+static int wifi_subcmd_disconnect(const console_args_t *args)
+{
+    (void)args;
+    bool ok = wifi_disconnect();
+    console_reply_ok("{\"disconnected\":%s}", ok ? "true" : "false");
+    return 0;
+}
+
+static int wifi_subcmd_forget(const console_args_t *args)
+{
+    (void)args;
+    bool ok = wifi_creds_forget();
+    console_reply_ok("{\"forgotten\":%s}", ok ? "true" : "false");
+    return 0;
+}
+
+static int wifi_subcmd_status(const console_args_t *args)
+{
+    (void)args;
+    wifi_status_t st;
+    wifi_get_status(&st);
+    bool has_creds = wifi_creds_has();
+    char ip[16] = "0.0.0.0";
+    if (st.connected) {
+        snprintf(ip, sizeof(ip), "%lu.%lu.%lu.%lu",
+                 (unsigned long)((st.ip_addr      ) & 0xFF),
+                 (unsigned long)((st.ip_addr >>  8) & 0xFF),
+                 (unsigned long)((st.ip_addr >> 16) & 0xFF),
+                 (unsigned long)((st.ip_addr >> 24) & 0xFF));
+    }
+    console_reply_ok("{\"configured\":%s,\"connected\":%s,\"ssid\":\"%s\","
+                     "\"ip\":\"%s\",\"rssi\":%d}",
+                     has_creds ? "true" : "false",
+                     st.connected ? "true" : "false",
+                     st.ssid, ip, (int)st.rssi);
+    return 0;
+}
+
+static int cmd_wifi(const console_args_t *args)
+{
+    if (args->argc < 2) {
+        console_reply_err("usage: wifi scan|connect|disconnect|forget|status …");
+        return 1;
+    }
+    const char *sub = args->argv[1];
+    if (strcmp(sub, "scan")       == 0) return wifi_subcmd_scan(args);
+    if (strcmp(sub, "connect")    == 0) return wifi_subcmd_connect(args);
+    if (strcmp(sub, "disconnect") == 0) return wifi_subcmd_disconnect(args);
+    if (strcmp(sub, "forget")     == 0) return wifi_subcmd_forget(args);
+    if (strcmp(sub, "status")     == 0) return wifi_subcmd_status(args);
+    console_reply_err("wifi: unknown subcommand '%s' "
+                      "(scan|connect|disconnect|forget|status)", sub);
+    return 1;
 }
 
 /* ── ?sd ──────────────────────────────────────────────────────────── */
@@ -744,11 +854,86 @@ static const char *ota_state_label(esp_ota_img_states_t s)
     }
 }
 
+/* ── ota download (real esp_https_ota path, v1.7) ──────────────────── */
+
+static int ota_subcmd_download(const console_args_t *args)
+{
+    const char *url = kv_lookup(args, "url");
+    if (!url) {
+        console_reply_err("download: missing url=");
+        return 1;
+    }
+    if (!wifi_is_connected()) {
+        console_reply_err("download: wifi not connected (use `wifi connect` first)");
+        return 1;
+    }
+
+    esp_http_client_config_t http_cfg = {
+        .url                         = url,
+        .timeout_ms                  = 8000,
+        .keep_alive_enable           = true,
+        .skip_cert_common_name_check = true,
+    };
+    esp_https_ota_config_t ota_cfg = {
+        .http_config = &http_cfg,
+    };
+
+    esp_https_ota_handle_t handle = NULL;
+    esp_err_t err = esp_https_ota_begin(&ota_cfg, &handle);
+    if (err != ESP_OK || handle == NULL) {
+        console_reply_err("ota_begin: %s", esp_err_to_name(err));
+        return 1;
+    }
+
+    int total = esp_https_ota_get_image_size(handle);
+    console_send_evt("OTA download_started url=%s total=%d", url, total);
+
+    int64_t t0 = esp_timer_get_time();
+    int last_pct = -1;
+    while ((err = esp_https_ota_perform(handle)) == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
+        int got = esp_https_ota_get_image_len_read(handle);
+        int pct = (total > 0) ? (int)((int64_t)got * 100 / total) : 0;
+        /* Emit progress only on integer-pct change to avoid flooding. */
+        if (pct != last_pct) {
+            console_send_evt("OTA progress=%d got=%d total=%d", pct, got, total);
+            last_pct = pct;
+        }
+    }
+    int64_t elapsed_ms = (esp_timer_get_time() - t0) / 1000;
+
+    if (err != ESP_OK) {
+        esp_https_ota_abort(handle);
+        console_reply_err("ota_perform: %s (elapsed=%lldms)",
+                          esp_err_to_name(err), elapsed_ms);
+        return 1;
+    }
+    if (!esp_https_ota_is_complete_data_received(handle)) {
+        esp_https_ota_abort(handle);
+        console_reply_err("ota_perform: incomplete (elapsed=%lldms)", elapsed_ms);
+        return 1;
+    }
+    err = esp_https_ota_finish(handle);
+    if (err != ESP_OK) {
+        console_reply_err("ota_finish: %s (elapsed=%lldms)",
+                          esp_err_to_name(err), elapsed_ms);
+        return 1;
+    }
+
+    int got = esp_https_ota_get_image_len_read(handle);
+    console_reply_ok("{\"downloaded\":%d,\"total\":%d,\"elapsed_ms\":%lld,"
+                     "\"note\":\"reboot to apply\"}",
+                     got, total, elapsed_ms);
+    return 0;
+}
+
 static int cmd_ota(const console_args_t *args)
 {
-    /* Subcommand: info (default) | mark-valid | rollback */
+    /* Subcommand: info (default) | download url=... | mark-valid | rollback */
     const char *sub = (args->argc >= 2) ? args->argv[1] : "info";
 
+    if (strcmp(sub, "download") == 0) {
+        return ota_subcmd_download(args);
+    }
     if (strcmp(sub, "mark-valid") == 0) {
         esp_err_t err = esp_ota_mark_app_valid_cancel_rollback();
         if (err != ESP_OK) {
@@ -768,7 +953,8 @@ static int cmd_ota(const console_args_t *args)
         return 1;
     }
     if (strcmp(sub, "info") != 0) {
-        console_reply_err("ota: unknown subcmd '%s' (info|mark-valid|rollback)", sub);
+        console_reply_err("ota: unknown subcmd '%s' "
+                          "(info|download|mark-valid|rollback)", sub);
         return 1;
     }
 
@@ -805,7 +991,7 @@ static int cmd_ota(const console_args_t *args)
 }
 
 static const console_cmd_t s_cmd_ota   = { "?ota",    cmd_ota,
-    "?ota [info|mark-valid|rollback]: OTA partition state + rollback control" };
+    "?ota [info|download url=...|mark-valid|rollback]: full OTA lifecycle" };
 
 /* ?stat / scene / tap / swipe / ?dump all registered via
  * harness_default_register() in aurora-harness. */
@@ -822,7 +1008,7 @@ static const console_cmd_t s_cmd_sys    = { "?sys",    cmd_sys,
 static const console_cmd_t s_cmd_sd     = { "?sd",     cmd_sd,
     "?sd [remount|bench MB|probe|format ERASE]: SD status + mgmt" };
 static const console_cmd_t s_cmd_wifi   = { "wifi",    cmd_wifi,
-    "wifi scan [TIMEOUT_MS [TOP_N]]: STA scan, JSON top-N by RSSI" };
+    "wifi scan|connect ssid=NAME pass=PASS|disconnect|forget|status: full STA lifecycle" };
 static const console_cmd_t s_cmd_ble    = { "ble",     cmd_ble,
     "ble scan [DUR_MS [MAX_N]]: passive observer, JSON unique devices" };
 static const console_cmd_t s_cmd_radio  = { "radio",   cmd_radio,

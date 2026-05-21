@@ -1,6 +1,16 @@
-# Name,   Type, SubType, Offset,  Size, Flags
-# Note: if you change the phy_init or app partition offset, make sure to change the offset in Kconfig.projbuild
-nvs,      data, nvs,     0x9000,  0x6000,
-phy_init, data, phy,     0xf000,  0x1000,
-factory,  app,  factory, ,        8M,
-storage,  data, spiffs,  ,        7M,
+# Name,    Type, SubType, Offset,   Size, Flags
+# v1.7 OTA layout: two 5 MB app slots + remainder as spiffs.
+#
+# Why two slots: real OTA requires the bootloader to ping-pong between
+# ota_0 and ota_1 so a failed boot can roll back to the previous
+# working image. With a single `factory` partition there is nowhere to
+# stage the new image.
+#
+# `otadata` (must be 0x2000 = two sectors) stores which slot the
+# bootloader will try next + the pending-verify gate for rollback.
+nvs,       data, nvs,     0x9000,   0x6000,
+otadata,   data, ota,     0xf000,   0x2000,
+phy_init,  data, phy,     0x11000,  0x1000,
+ota_0,     app,  ota_0,   0x20000,  0x500000,
+ota_1,     app,  ota_1,   ,         0x500000,
+storage,   data, spiffs,  ,         5M,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>esp-harness — 沉淀汇报 v1.6</title>
+<title>esp-harness — 沉淀汇报 v1.7</title>
 <link rel="icon" type="image/svg+xml" href="brand/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -412,17 +412,20 @@
 <!-- ─────────── MASTHEAD ─────────── -->
 <header class="masthead">
   <div class="masthead-meta">
-    <span><b>esp-harness</b> · 沉淀汇报 · 成熟项目</span>
-    <span>v1.6.0 · 2026·05·22</span>
+    <span><b>esp-harness</b> · 沉淀汇报 · 联网 + 真实 OTA</span>
+    <span>v1.7.0 · 2026·05·22</span>
   </div>
-  <h1>从 demo<br>变成<br><span class="accent">成熟项目</span></h1>
+  <h1>设备从此<br>能<br><span class="accent">自己升级</span></h1>
   <p class="lede">
-    继 v1.5 单仓化后, v1.6 完成<span class="pivot">项目成熟化</span> — 整套品牌身份
-    (<span class="num">logo · wordmark · social card</span>), 项目宣言 (<span class="num">manifesto</span>),
-    FAQ + 故障排查文档, <span class="num">3 张 SVG 架构图</span>, <span class="num">真 homepage HTML</span>,
-    contributing + issue/PR 模板, 第二个最小化 example, GitHub repo metadata + Pages 部署
-    (<span class="num">caldis.github.io/esp-harness</span>). 失忆测试通过 — 看 README 30 秒认出,
-    manifesto 5 分钟读懂为什么, getting-started 10 分钟动手.
+    继 v1.6 项目成熟化后, v1.7 把硬件接入<span class="pivot">真实世界</span> —
+    <span class="num">WiFi STA 连接</span> (event-group + IP_GOT 双门控, 3 次自动重试),
+    <span class="num">NVS 凭证持久化</span> (重启自动续连),
+    <span class="num">真实 OTA over HTTPS</span> (<code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">esp_https_ota</code> 流式拉取 + 整数百分点 EVT 上报),
+    <span class="num">双槽 partitions.csv</span> (ota_0/ota_1 各 5M + rollback),
+    <span class="num">qmi8658 自动 patch</span> (CMake 内联 + toolkit 重试双层防御).
+    端到端 — <code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">wifi connect ssid=… pass=…</code>
+    一行上网, <code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">?ota download url=…</code>
+    一行升级.
   </p>
 </header>
 
@@ -437,9 +440,9 @@
 
   <div class="glance-grid">
     <div class="glance-cell">
-      <div class="big rust">16</div>
+      <div class="big rust">17</div>
       <div class="label">Toolkit 命令</div>
-      <div class="sub">含新 <code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">doctor</code> 环境健康检查, <code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">test</code> pytest 集成测试入口</div>
+      <div class="sub">含 <code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">doctor</code> / <code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">test</code> + v1.7 自动 patch (build 失败自动 retry waveshare__qmi8658)</div>
     </div>
     <div class="glance-cell">
       <div class="big rust">20</div>
@@ -728,7 +731,38 @@
           <li><span class="check">✓</span><span><b>J9</b> GitHub repo metadata — description / homepage / 14 topics / wiki off</span><span class="commit">gh repo edit</span></li>
           <li><span class="check">✓</span><span><b>J10</b> GitHub Pages 启用 — <code>caldis.github.io/esp-harness/</code> 走 master /docs</span><span class="commit">gh api</span></li>
           <li><span class="check">✓</span><span><b>J11</b> Badges 收口 — 各 artifact README 顶部带 badge 条</span><span class="commit">视觉一致性</span></li>
-          <li><span class="check">✓</span><span><b>J12</b> v1.6.0 tag + 本汇报 HTML v5 + CHANGELOG entry</span><span class="commit">本提交</span></li>
+          <li><span class="check">✓</span><span><b>J12</b> v1.6.0 tag + 本汇报 HTML v5 + CHANGELOG entry</span><span class="commit">52d4ee9</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC K — connectivity + real OTA -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">K</div>
+      <div class="arc-meta"><b>联网 + 真实 OTA</b><br>8 tasks · 3 hr<br>tag v1.7.0 (本汇报)</div>
+    </div>
+    <div>
+      <div class="arc-title">硬件从此<br><em>能自己升级</em></div>
+      <div class="arc-body">
+        <p>v1.6 之前 <code>?ota</code> 只是空架子 — 有 <code>info/mark-valid/rollback</code>,
+        但 partitions.csv 是单 factory 槽, 也没真正的下载路径. v1.7 把这条线打通:
+        partitions 切到双 ota_0/ota_1 槽 + rollback gate, WiFi 加完整 STA 连接 +
+        NVS 凭证持久化, <code>?ota download url=</code> 接 esp_https_ota 流式拉取
+        + 整数百分点 EVT 进度上报. 顺手把困扰已久的
+        <code>waveshare__qmi8658</code> upstream bug 收口为<em>双层自动 patch</em>:
+        CMake inline (项目本地 / 离线可用) + toolkit retry (失败签名识别 + 自动
+        重试). 之后任何新机器 clone 即建, 不再需要手动 sed.</p>
+        <ul class="arc-deliverables">
+          <li><span class="check">✓</span><span><b>K1</b> qmi8658 自动 patch — <code>esp_harness_apply_known_patches()</code> CMake 函数 + <code>patches.py</code> toolkit retry 双层</span><span class="commit">CMake+py</span></li>
+          <li><span class="check">✓</span><span><b>K2</b> <code>peripherals/wifi_creds</code> — NVS 凭证持久化 (namespace <code>wifi_cred</code>, 5 函数 API)</span><span class="commit">init/set/get/has/forget</span></li>
+          <li><span class="check">✓</span><span><b>K3</b> <code>wifi.c</code> 扩展 — STA 连接 + event group + IP_GOT 门控 + 3 次自动重试 + <code>wifi_get_status()</code></span><span class="commit">~150 行新增</span></li>
+          <li><span class="check">✓</span><span><b>K4</b> <code>wifi</code> 命令重设计 — scan / connect ssid= pass= / disconnect / forget / status 五子命令</span><span class="commit">save=1 自动持久化</span></li>
+          <li><span class="check">✓</span><span><b>K5</b> <code>partitions.csv</code> 双 OTA 布局 — ota_0/ota_1 各 5 M + storage 5 M + rollback gate sdkconfig</span><span class="commit">CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y</span></li>
+          <li><span class="check">✓</span><span><b>K6</b> <code>?ota download url=</code> 真实路径 — esp_https_ota 流式 + 整数百分点 EVT 上报 + 完成不自动重启</span><span class="commit">AI 主导何时切槽</span></li>
+          <li><span class="check">✓</span><span><b>K7</b> 端到端验证 — clean rebuild 65.5s 0 warnings / sim diff 13/13 identical / pytest 3/3 / manifest 17 cmds</span><span class="commit">全过</span></li>
+          <li><span class="check">✓</span><span><b>K8</b> v1.7.0 tag + 本汇报 HTML v6 + CHANGELOG entry</span><span class="commit">本提交</span></li>
         </ul>
       </div>
     </div>
@@ -921,22 +955,31 @@
   <h3 style="font-family:var(--mono); font-size:0.78rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--gold); margin:48px 0 12px;">下一档 (中期, 需前置)</h3>
 
   <div class="roadmap-row">
-    <div class="pri">★★</div>
-    <div class="effort">4 hr</div>
+    <div class="pri">★★★</div>
+    <div class="effort">3 hr</div>
     <div>
-      <div class="title">真实 OTA over HTTPS</div>
-      <div class="desc">前置: 改 partitions.csv 引入 ota_data + 两槽; WiFi 凭证持久化 (NVS + 一次性配网 UI). 当前 ?ota 已有 mark-valid/rollback 框架, 只差下载.</div>
+      <div class="title done">真实 OTA over HTTPS</div>
+      <div class="desc">K5-K6 完成. partitions.csv 双 ota_0/ota_1 槽 + rollback gate, <code>?ota download url=</code> 接 esp_https_ota 流式拉取, 整数百分点 EVT 进度. 完成不自动重启 — AI 控制何时切槽.</div>
     </div>
-    <div class="gate blocked">需配网</div>
+    <div class="gate done">DONE v1.7</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★★</div>
+    <div class="effort">2 hr</div>
+    <div>
+      <div class="title done">WiFi STA 连接 + NVS 凭证持久化</div>
+      <div class="desc">K2-K4 完成. <code>wifi connect ssid= pass= save=1</code> 一行入网, event-group + IP_GOT 双门控防"假绿灯". NVS namespace <code>wifi_cred</code> 重启自动续连. 配网 UI 留待 v1.8 NimBLE peripheral.</div>
+    </div>
+    <div class="gate done">DONE v1.7</div>
   </div>
   <div class="roadmap-row">
     <div class="pri">★★</div>
     <div class="effort">3 hr</div>
     <div>
       <div class="title">WiFi 一次性配网 (NimBLE peripheral)</div>
-      <div class="desc">前置: 现在 NimBLE 只 observer 模式. 加 peripheral GATT 接收 SSID/PASS → NVS 私密 namespace.</div>
+      <div class="desc">现在 NimBLE 只 observer 模式. 加 peripheral GATT 接收 SSID/PASS → NVS 私密 namespace. v1.7 的 wifi_creds API 已就位, 只差 BLE 配网 UI.</div>
     </div>
-    <div class="gate blocked">前置</div>
+    <div class="gate blocked">v1.8</div>
   </div>
   <div class="roadmap-row">
     <div class="pri">★★</div>
@@ -1023,7 +1066,7 @@
   </p>
 
   <div class="footer">
-    <span>monorepo: <a href="https://github.com/Caldis/esp-harness">Caldis/esp-harness</a> v1.6.0</span>
+    <span>monorepo: <a href="https://github.com/Caldis/esp-harness">Caldis/esp-harness</a> v1.7.0</span>
     <span>archived: <a href="https://github.com/Caldis/esp32-harness-showcase">esp32-harness-showcase</a> v1.4.0 · <a href="https://github.com/Caldis/esp32-harness-toolkit">esp32-harness-toolkit</a> v1.0.0</span>
   </div>
 </section>
