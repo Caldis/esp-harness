@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>esp-harness — AI-driven dev-loop scaffold for ESP-IDF + LVGL</title>
+<meta name="description" content="A reusable C component + Python CLI + reference firmware + host LVGL simulator. Drop into any ESP-IDF + LVGL project for the AI dev loop: structured console, manifest discovery, sim diff, bench compare.">
+<meta property="og:title" content="esp-harness">
+<meta property="og:description" content="AI-driven dev-loop scaffold for ESP-IDF + LVGL projects">
+<meta property="og:image" content="brand/social-card.svg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://caldis.github.io/esp-harness/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="brand/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Geist:wght@300..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:     #f3eee2;
+    --paper-2:   #ebe5d6;
+    --rule:      #d6cdb7;
+    --ink:       #1c1814;
+    --ink-mute:  #5a514a;
+    --ink-fade:  #8a807a;
+    --rust:      #b8431a;
+    --rust-deep: #8a3214;
+    --moss:      #344a36;
+    --gold:      #b89020;
+    --serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --sans:  "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono:  "IBM Plex Mono", "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: clamp(15px, 1vw + 0.5rem, 17px);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(184,67,26,0.04), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(52,74,54,0.04), transparent 60%);
+    pointer-events: none; z-index: -1;
+  }
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 clamp(24px, 5vw, 80px); }
+
+  /* ── nav ── */
+  nav {
+    padding: clamp(20px, 3vh, 32px) 0;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--rule);
+  }
+  nav .brand {
+    display: flex; align-items: center; gap: 14px;
+    color: var(--ink); font-weight: 600; text-transform: lowercase;
+    font-size: 0.92rem; letter-spacing: 0;
+  }
+  nav .brand img { width: 28px; height: 28px; }
+  nav .links { display: flex; gap: 28px; }
+  nav .links a {
+    color: var(--ink-mute); text-decoration: none;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  nav .links a:hover { color: var(--rust); }
+
+  /* ── hero ── */
+  .hero { padding: clamp(60px, 12vh, 140px) 0 clamp(48px, 8vh, 96px); }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: clamp(40px, 6vw, 80px);
+    align-items: center;
+  }
+  @media (max-width: 800px) {
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-weight: 350;
+    font-size: clamp(2.6rem, 7vw, 5.6rem);
+    letter-spacing: -0.04em;
+    line-height: 0.96;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+  }
+  .hero h1 .accent {
+    color: var(--rust); font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 80, "WONK" 1;
+  }
+  .hero .lede {
+    margin-top: clamp(28px, 4vh, 42px);
+    font-family: var(--serif);
+    font-size: clamp(1.1rem, 1.4vw + 0.4rem, 1.5rem);
+    line-height: 1.45; font-weight: 300;
+    color: var(--ink); max-width: 38ch;
+    font-variation-settings: "opsz" 24;
+  }
+  .hero .cta {
+    margin-top: clamp(32px, 5vh, 48px);
+    display: flex; flex-wrap: wrap; gap: 14px;
+  }
+  .btn {
+    font-family: var(--mono); font-size: 0.82rem;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 14px 24px; border-radius: 2px;
+    text-decoration: none; transition: all 0.15s;
+    display: inline-block;
+  }
+  .btn-primary {
+    background: var(--ink); color: var(--paper);
+    border: 1px solid var(--ink);
+  }
+  .btn-primary:hover { background: var(--rust); border-color: var(--rust); }
+  .btn-ghost {
+    background: transparent; color: var(--ink);
+    border: 1px solid var(--ink);
+  }
+  .btn-ghost:hover { background: var(--ink); color: var(--paper); }
+
+  .hero-mark { display: flex; justify-content: center; align-items: center; }
+  .hero-mark img { max-width: min(360px, 80%); height: auto; }
+
+  /* ── 30-second pitch (terminal block) ── */
+  .pitch {
+    padding: clamp(48px, 8vh, 96px) 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    background:
+      linear-gradient(to right, transparent, var(--paper-2), transparent);
+  }
+  .pitch-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: clamp(40px, 5vw, 64px); align-items: center;
+  }
+  @media (max-width: 800px) { .pitch-grid { grid-template-columns: 1fr; } }
+  .pitch h2 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    letter-spacing: -0.02em; line-height: 1.1;
+    font-variation-settings: "opsz" 56;
+  }
+  .pitch h2 em { color: var(--rust); font-variation-settings: "opsz" 56, "SOFT" 80; }
+  .pitch .quote {
+    margin-top: 24px;
+    font-family: var(--serif); font-style: italic;
+    color: var(--ink-mute); font-size: 1.05rem;
+    line-height: 1.6; max-width: 42ch;
+  }
+  .terminal {
+    background: var(--ink); color: var(--paper);
+    border-radius: 6px; overflow: hidden;
+    font-family: var(--mono); font-size: 0.86rem;
+    line-height: 1.6;
+    box-shadow: 0 30px 60px -20px rgba(28,24,20,0.25),
+                0 8px 16px -8px rgba(28,24,20,0.2);
+  }
+  .terminal-bar {
+    background: #2a2520; padding: 10px 14px;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .terminal-bar span {
+    display: block; width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(243,238,226,0.25);
+  }
+  .terminal-bar .title {
+    width: auto; height: auto; border-radius: 0;
+    margin-left: auto;
+    background: transparent;
+    font-size: 0.7rem; color: var(--ink-fade);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .terminal-body { padding: 22px 26px; }
+  .terminal-body .prompt { color: #e89066; }
+  .terminal-body .cmd    { color: var(--paper); }
+  .terminal-body .out    { color: #c7e0a4; opacity: 0.85; }
+  .terminal-body .dim    { color: rgba(243,238,226,0.45); }
+
+  /* ── three paths ── */
+  section { padding: clamp(64px, 10vh, 120px) 0; }
+  .section-h {
+    font-family: var(--mono); font-size: 0.78rem;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--rust); margin-bottom: 12px;
+  }
+  section h2 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(1.8rem, 3.5vw, 3rem);
+    letter-spacing: -0.02em; line-height: 1.05;
+    font-variation-settings: "opsz" 72; max-width: 24ch;
+    margin-bottom: clamp(40px, 6vh, 60px);
+  }
+  section h2 em { color: var(--rust); font-variation-settings: "opsz" 72, "SOFT" 80; }
+
+  .paths {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: clamp(20px, 3vw, 40px);
+  }
+  .path {
+    padding: clamp(28px, 4vw, 40px);
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    transition: border-color 0.15s;
+  }
+  .path:hover { border-color: var(--rust); }
+  .path .label {
+    font-family: var(--mono); font-size: 0.7rem;
+    letter-spacing: 0.12em; color: var(--rust);
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  .path h3 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: 1.35rem; line-height: 1.2;
+    margin-bottom: 14px;
+    font-variation-settings: "opsz" 32;
+  }
+  .path p {
+    color: var(--ink-mute); font-size: 0.92rem;
+    line-height: 1.55; margin-bottom: 18px;
+  }
+  .path pre {
+    background: var(--paper-2); padding: 10px 14px;
+    font-family: var(--mono); font-size: 0.78rem;
+    border-radius: 2px; line-height: 1.5;
+    color: var(--ink); overflow-x: auto;
+  }
+  .path .link {
+    margin-top: 18px;
+    font-family: var(--mono); font-size: 0.78rem;
+    color: var(--rust); text-decoration: none;
+    letter-spacing: 0.04em;
+  }
+  .path .link:hover { text-decoration: underline; }
+
+  /* ── architecture ── */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(24px, 4vw, 56px);
+    align-items: start;
+  }
+  @media (max-width: 760px) { .arch-grid { grid-template-columns: 1fr; } }
+  .arch-grid p {
+    font-size: 0.95rem; color: var(--ink-mute);
+    line-height: 1.65; margin-bottom: 18px; max-width: 50ch;
+  }
+  .arch-grid p strong { color: var(--ink); font-weight: 500; }
+  .arch-svg {
+    background: var(--paper-2); padding: 32px; border-radius: 4px;
+    border: 1px solid var(--rule);
+  }
+  .arch-svg svg { width: 100%; height: auto; display: block; }
+
+  /* ── compare ── */
+  .compare {
+    width: 100%; border-collapse: collapse;
+    margin-top: 32px;
+  }
+  .compare th, .compare td {
+    padding: 18px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.92rem; line-height: 1.5;
+    vertical-align: top;
+  }
+  .compare th {
+    font-family: var(--mono); font-size: 0.7rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-fade); font-weight: 500;
+  }
+  .compare tr:last-child td { border-bottom: none; }
+  .compare .tool {
+    font-family: var(--serif); font-style: italic;
+    color: var(--ink); white-space: nowrap;
+    font-variation-settings: "opsz" 18;
+  }
+  .compare .tool.us {
+    font-weight: 500; color: var(--rust); font-style: normal;
+  }
+
+  /* ── footer ── */
+  footer {
+    padding: clamp(60px, 8vh, 100px) 0 32px;
+    border-top: 1px solid var(--rule);
+    margin-top: clamp(40px, 6vh, 80px);
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 40px; margin-bottom: 56px;
+  }
+  @media (max-width: 700px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .footer-grid h4 {
+    font-family: var(--mono); font-size: 0.7rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--rust); margin-bottom: 14px;
+  }
+  .footer-grid ul { list-style: none; }
+  .footer-grid li { margin-bottom: 8px; font-size: 0.88rem; }
+  .footer-grid a { color: var(--ink-mute); text-decoration: none; }
+  .footer-grid a:hover { color: var(--rust); }
+  .footer-tagline {
+    font-family: var(--serif); font-size: 0.95rem;
+    color: var(--ink-mute); line-height: 1.5;
+    max-width: 36ch;
+  }
+  .footer-bar {
+    padding-top: 24px; border-top: 1px solid var(--rule);
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 0.72rem;
+    color: var(--ink-fade); letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex-wrap: wrap; gap: 16px;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hero h1, .hero .lede, .hero .cta {
+    animation: rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .hero h1 { animation-delay: 0.1s; }
+  .hero .lede { animation-delay: 0.25s; }
+  .hero .cta { animation-delay: 0.4s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#" class="brand">
+    <img src="brand/favicon.svg" alt="">
+    esp-harness
+  </a>
+  <div class="links">
+    <a href="#start">Quickstart</a>
+    <a href="#arch">Architecture</a>
+    <a href="#compare">Vs others</a>
+    <a href="https://github.com/Caldis/esp-harness">GitHub</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-grid">
+    <div>
+      <h1>The dev loop<br>your ESP32<br>has been<br><span class="accent">missing</span></h1>
+      <p class="lede">
+        A reusable C component, a Python CLI, a reference firmware, and a
+        host simulator — all in one repo. Drop into any ESP-IDF + LVGL
+        project and turn `idf.py monitor` into a structured, AI-driveable
+        loop.
+      </p>
+      <div class="cta">
+        <a href="#start" class="btn btn-primary">Quickstart →</a>
+        <a href="https://github.com/Caldis/esp-harness" class="btn btn-ghost">View on GitHub</a>
+      </div>
+    </div>
+    <div class="hero-mark">
+      <img src="brand/logo.svg" alt="esp-harness logo">
+    </div>
+  </div>
+</section>
+
+<!-- ── 30-SECOND PITCH ── -->
+<section class="pitch" id="start">
+  <div class="pitch-grid">
+    <div>
+      <div class="section-h">§ Pitch — 30 seconds</div>
+      <h2>From clone to<br>your first scene<br><em>in three commands</em>.</h2>
+      <p class="quote">
+        No board needed for the simulator. No PlatformIO. No Arduino IDE.
+        Just ESP-IDF and a laptop. The scaffolding is opinionated; the
+        outputs are structured; the AI loop is the default, not an
+        afterthought.
+      </p>
+    </div>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span></span><span></span><span></span>
+        <div class="title">~/code</div>
+      </div>
+      <div class="terminal-body">
+<span class="dim"># 1. install</span>
+<span class="prompt">$</span> <span class="cmd">git clone github.com/Caldis/esp-harness</span>
+<span class="prompt">$</span> <span class="cmd">pip install -e esp-harness/tools/esp-harness/</span>
+
+<span class="dim"># 2. scaffold a project</span>
+<span class="prompt">$</span> <span class="cmd">esp-harness new my-thing</span>
+<span class="out">scaffolded my_thing at ./my-thing (source: vendor)</span>
+
+<span class="dim"># 3. build + flash + iterate</span>
+<span class="prompt">$</span> <span class="cmd">cd my-thing && esp-harness build && esp-harness flash</span>
+<span class="out">build OK in 13.8s · flashed 1.6 MB</span>
+
+<span class="prompt">$</span> <span class="cmd">esp-harness manifest --json</span>
+<span class="out">{ toolkit_commands: [...17 cmds...], device: {...} }</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── THREE PATHS ── -->
+<section>
+  <div class="section-h">§ Three onboarding paths</div>
+  <h2>Pick the path<br>that matches<br>your <em>goal</em>.</h2>
+
+  <div class="paths">
+    <div class="path">
+      <div class="label">▸ Use the library</div>
+      <h3>For your own ESP-IDF + LVGL project</h3>
+      <p>Scaffold a self-contained project with aurora-harness vendored in. Your code, your peripherals, our scaffolding.</p>
+      <pre>esp-harness new my-thing
+cd my-thing
+esp-harness build
+esp-harness flash</pre>
+      <a href="https://github.com/Caldis/esp-harness/tree/master/components/aurora-harness#readme" class="link">Read the component README →</a>
+    </div>
+
+    <div class="path">
+      <div class="label">▸ Run the demo</div>
+      <h3>The Aurora reference firmware</h3>
+      <p>20 scenes exercising every peripheral of the Waveshare ESP32-S3-Touch-AMOLED-2.16. The worked example.</p>
+      <pre>cd examples/aurora/
+esp-harness build && flash
+esp-harness monitor --seconds 8</pre>
+      <a href="https://github.com/Caldis/esp-harness/tree/master/examples/aurora#readme" class="link">See the demo →</a>
+    </div>
+
+    <div class="path">
+      <div class="label">▸ Run the simulator</div>
+      <h3>No hardware? Use the host build</h3>
+      <p>5-second UI iterations on your laptop via SDL2 + LVGL. Visual regression on every PR.</p>
+      <pre>cd examples/aurora/sim/
+cmake -B build
+cmake --build build
+esp-harness sim diff</pre>
+      <a href="https://github.com/Caldis/esp-harness/tree/master/examples/aurora/sim#readme" class="link">Try the sim →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── ARCHITECTURE ── -->
+<section id="arch">
+  <div class="section-h">§ Architecture</div>
+  <h2>Three layers,<br>one discovery<br><em>surface</em>.</h2>
+
+  <div class="arch-grid">
+    <div>
+      <p><strong>Layer 1 — Toolkit (host Python CLI).</strong> Drives the device. Knows nothing firmware-specific; learns everything via the manifest at runtime.</p>
+      <p><strong>Layer 2 — aurora-harness component (device C library).</strong> Console protocol + scene framework + UI overlays. Reusable, board-agnostic.</p>
+      <p><strong>Layer 3 — Application (your firmware).</strong> Owns app_main, scenes, peripherals, business logic. Uses Layer 2 as scaffolding.</p>
+      <p>A single command — <code style="font-family:var(--mono);background:var(--paper-2);padding:2px 6px;font-size:0.85em">esp-harness manifest --json</code> — flattens what every layer offers. If it's not in the manifest, it doesn't exist for the AI.</p>
+      <p><a href="https://github.com/Caldis/esp-harness/blob/master/docs/architecture.md" class="link" style="margin-top:8px;display:inline-block">Full architecture doc →</a></p>
+    </div>
+    <div class="arch-svg">
+      <!-- Inline architecture diagram -->
+      <svg viewBox="0 0 360 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="esp-harness three-layer architecture diagram">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1c1814"/>
+          </marker>
+        </defs>
+
+        <!-- Layer 1 -->
+        <rect x="20" y="20" width="320" height="100" rx="6" fill="#fdf9ee" stroke="#1c1814" stroke-width="1.5"/>
+        <text x="180" y="48" text-anchor="middle" font-family="Fraunces,serif" font-size="20" font-style="italic" fill="#b8431a">Layer 1 · Toolkit</text>
+        <text x="180" y="72" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#5a514a">tools/esp-harness/  (Python CLI)</text>
+        <text x="180" y="96" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#1c1814">build · flash · monitor · sim · bench · doctor</text>
+
+        <!-- arrow down -->
+        <line x1="180" y1="125" x2="180" y2="160" stroke="#1c1814" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="190" y="146" font-family="IBM Plex Mono,monospace" font-size="9" fill="#8a807a">subprocess + JSON + serial</text>
+
+        <!-- Layer 2 -->
+        <rect x="20" y="170" width="320" height="120" rx="6" fill="#fdf9ee" stroke="#1c1814" stroke-width="1.5"/>
+        <text x="180" y="198" text-anchor="middle" font-family="Fraunces,serif" font-size="20" font-style="italic" fill="#b8431a">Layer 2 · aurora-harness</text>
+        <text x="180" y="222" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#5a514a">components/aurora-harness/  (reusable C component)</text>
+        <text x="180" y="246" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#1c1814">console protocol · scene framework · toast / progress</text>
+        <text x="180" y="262" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#1c1814">default ?stat / scene / tap / swipe / ?dump</text>
+        <text x="180" y="278" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#1c1814">bsp_iface (lock/unlock only)</text>
+
+        <!-- arrow down -->
+        <line x1="180" y1="295" x2="180" y2="330" stroke="#1c1814" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="190" y="316" font-family="IBM Plex Mono,monospace" font-size="9" fill="#8a807a">consumer = your app</text>
+
+        <!-- Layer 3 -->
+        <rect x="20" y="340" width="320" height="100" rx="6" fill="#fdf9ee" stroke="#1c1814" stroke-width="1.5"/>
+        <text x="180" y="368" text-anchor="middle" font-family="Fraunces,serif" font-size="20" font-style="italic" fill="#b8431a">Layer 3 · Application</text>
+        <text x="180" y="392" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="11" fill="#5a514a">examples/&lt;your-thing&gt;/  (your firmware)</text>
+        <text x="180" y="416" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="#1c1814">app_main · scenes · peripherals · console cmds</text>
+
+        <!-- side label for manifest -->
+        <text x="350" y="100" text-anchor="end" font-family="Fraunces,serif" font-size="11" font-style="italic" fill="#b8431a" transform="rotate(-90, 350, 100)">
+          ← esp-harness manifest --json
+        </text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMPARE ── -->
+<section id="compare">
+  <div class="section-h">§ Where we sit</div>
+  <h2>What each tool<br>gives you, vs<br>what we <em>add</em>.</h2>
+
+  <table class="compare">
+    <thead>
+      <tr>
+        <th>Stack</th>
+        <th>Solves</th>
+        <th>Doesn't solve</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="tool">Raw ESP-IDF</td>
+        <td>Build / flash / monitor. Mature, official, the substrate.</td>
+        <td>AI dev loop, manifest, sim, structured console, bench, scene framework.</td>
+      </tr>
+      <tr>
+        <td class="tool">PlatformIO</td>
+        <td>Build / flash / monitor with cross-platform abstraction. VS Code integration.</td>
+        <td>Same as above — PIO is a fancier build wrapper, not an AI dev loop.</td>
+      </tr>
+      <tr>
+        <td class="tool">Arduino IDE</td>
+        <td>One-button build / upload. Easy first touch.</td>
+        <td>Mostly everything — Arduino abstracts the layer below where our value lives.</td>
+      </tr>
+      <tr>
+        <td class="tool">LVGL official sim</td>
+        <td>Host LVGL build template, generic.</td>
+        <td>The bridge from your firmware code to the sim. The scene framework. The harness.</td>
+      </tr>
+      <tr>
+        <td class="tool us">esp-harness <small style="opacity:0.6">(this repo)</small></td>
+        <td>All of the above's value-add, plus the AI dev loop. Targeted at ESP-IDF + LVGL specifically.</td>
+        <td>Other build systems (PIO, Bazel, …). Non-LVGL UI frameworks. Other MCU families (yet).</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="container" style="padding: 0;">
+    <div class="footer-grid">
+      <div>
+        <a href="#" class="brand" style="display:inline-flex; align-items:center; gap:10px; text-decoration:none; margin-bottom:14px;">
+          <img src="brand/favicon.svg" alt="" style="width:24px; height:24px;">
+          <strong style="font-family:var(--mono); color:var(--ink); font-size:0.92rem;">esp-harness</strong>
+        </a>
+        <p class="footer-tagline">
+          Made with intent, in pursuit of <em>shorter loops</em>.
+        </p>
+      </div>
+      <div>
+        <h4>Docs</h4>
+        <ul>
+          <li><a href="https://github.com/Caldis/esp-harness/blob/master/README.md">README</a></li>
+          <li><a href="https://github.com/Caldis/esp-harness/blob/master/docs/getting-started.md">Getting started</a></li>
+          <li><a href="https://github.com/Caldis/esp-harness/blob/master/docs/architecture.md">Architecture</a></li>
+          <li><a href="https://github.com/Caldis/esp-harness/blob/master/docs/manifesto.md">Manifesto</a></li>
+          <li><a href="./harness-report.html">Progress report</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Repo</h4>
+        <ul>
+          <li><a href="https://github.com/Caldis/esp-harness">GitHub</a></li>
+          <li><a href="https://github.com/Caldis/esp-harness/releases">Releases</a></li>
+          <li><a href="https://github.com/Caldis/esp-harness/issues">Issues</a></li>
+          <li><a href="https://github.com/Caldis/esp-harness/blob/master/.github/CONTRIBUTING.md">Contributing</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Stack</h4>
+        <ul>
+          <li><a href="https://docs.espressif.com/projects/esp-idf/">ESP-IDF</a></li>
+          <li><a href="https://lvgl.io/">LVGL</a></li>
+          <li><a href="https://components.espressif.com/">Component Registry</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bar">
+      <span>© 2026 Caldis · MIT</span>
+      <span>v1.5.0 · monorepo</span>
+    </div>
+  </div>
+</footer>
+
+</div>
+
+</body>
+</html>

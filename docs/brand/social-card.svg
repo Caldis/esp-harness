@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GitHub social card: 1280x640 (2:1 aspect). Used as the og:image / Twitter card. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" role="img" aria-label="esp-harness social card">
+  <title>esp-harness — AI-driven dev-loop scaffold for ESP-IDF + LVGL</title>
+
+  <!-- Paper background with subtle gradient -->
+  <defs>
+    <radialGradient id="bg" cx="0.85" cy="0.15" r="0.9">
+      <stop offset="0%"  stop-color="#f9f4e6"/>
+      <stop offset="100%" stop-color="#f3eee2"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- Decorative accent: long thin horizontal rule (echoes the harness cross-bar) -->
+  <rect x="80" y="540" width="1120" height="2" fill="#b8431a" opacity="0.4"/>
+
+  <!-- Logo mark, scaled up, positioned left -->
+  <g transform="translate(80, 130) scale(2.4)">
+    <rect x="14" y="14" width="92" height="92" rx="18"
+          fill="none" stroke="#1c1814" stroke-width="2"
+          stroke-dasharray="5 4" opacity="0.35"/>
+    <rect x="36" y="32" width="11" height="56" rx="1" fill="#1c1814"/>
+    <rect x="73" y="32" width="11" height="56" rx="1" fill="#1c1814"/>
+    <rect x="36" y="55" width="48" height="10" rx="1" fill="#b8431a"/>
+    <circle cx="60" cy="60" r="3.2" fill="#f3eee2"/>
+  </g>
+
+  <!-- Wordmark + tagline on the right -->
+  <text x="430" y="260"
+        font-family="'Fraunces', 'Iowan Old Style', Georgia, serif"
+        font-size="108"
+        font-weight="400"
+        fill="#1c1814"
+        letter-spacing="-2">esp<tspan fill="#b8431a" font-style="italic">-</tspan>harness</text>
+
+  <text x="430" y="320"
+        font-family="'Fraunces', 'Iowan Old Style', Georgia, serif"
+        font-size="32"
+        font-style="italic"
+        fill="#5a514a"
+        font-weight="300">AI-driven dev-loop scaffold for</text>
+  <text x="430" y="358"
+        font-family="'Fraunces', 'Iowan Old Style', Georgia, serif"
+        font-size="32"
+        font-style="italic"
+        fill="#5a514a"
+        font-weight="300">ESP-IDF + LVGL projects</text>
+
+  <!-- Three-pillar lozenges -->
+  <g font-family="'IBM Plex Mono', Consolas, monospace" font-size="22" fill="#1c1814">
+    <text x="430" y="450">▸ reusable C component</text>
+    <text x="430" y="486">▸ host LVGL simulator</text>
+    <text x="430" y="522">▸ Python CLI for the AI loop</text>
+  </g>
+
+  <!-- Bottom right URL -->
+  <text x="1200" y="600"
+        text-anchor="end"
+        font-family="'IBM Plex Mono', Consolas, monospace"
+        font-size="18"
+        fill="#8a807a">github.com/Caldis/esp-harness</text>
+</svg>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 120" role="img" aria-label="esp-harness">
+  <title>esp-harness wordmark</title>
+  <desc>The logo mark followed by the wordmark "esp-harness" in Fraunces-style serif.</desc>
+
+  <!-- Logo mark on the left -->
+  <g transform="translate(0, 0)">
+    <rect x="14" y="14" width="92" height="92" rx="18"
+          fill="none" stroke="#1c1814" stroke-width="2"
+          stroke-dasharray="5 4" opacity="0.35"/>
+    <rect x="36" y="32" width="11" height="56" rx="1" fill="#1c1814"/>
+    <rect x="73" y="32" width="11" height="56" rx="1" fill="#1c1814"/>
+    <rect x="36" y="55" width="48" height="10" rx="1" fill="#b8431a"/>
+    <circle cx="60" cy="60" r="3.2" fill="#f3eee2"/>
+  </g>
+
+  <!-- Wordmark — serif, with subtle italic accent on the hyphen connector -->
+  <text x="140" y="78"
+        font-family="'Fraunces', 'Iowan Old Style', Georgia, serif"
+        font-size="64"
+        font-weight="400"
+        fill="#1c1814"
+        font-feature-settings="'ss01'"
+        letter-spacing="-0.5">esp<tspan fill="#b8431a" font-style="italic">-</tspan>harness</text>
+</svg>

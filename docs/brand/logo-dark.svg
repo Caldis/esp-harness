@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="esp-harness">
+  <title>esp-harness</title>
+  <desc>Dark-background variant: paper-coloured H letterform with the same rust cross-bar.</desc>
+
+  <rect x="14" y="14" width="92" height="92" rx="18"
+        fill="none" stroke="#f3eee2" stroke-width="2"
+        stroke-dasharray="5 4" opacity="0.35"/>
+
+  <rect x="36" y="32" width="11" height="56" rx="1" fill="#f3eee2"/>
+  <rect x="73" y="32" width="11" height="56" rx="1" fill="#f3eee2"/>
+
+  <rect x="36" y="55" width="48" height="10" rx="1" fill="#b8431a"/>
+
+  <circle cx="60" cy="60" r="3.2" fill="#1c1814"/>
+</svg>

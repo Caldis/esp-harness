@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aurora × esp-harness — 沉淀汇报 v1.4</title>
+<title>esp-harness — 沉淀汇报 v1.6</title>
+<link rel="icon" type="image/svg+xml" href="brand/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Geist:wght@300..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -411,16 +412,17 @@
 <!-- ─────────── MASTHEAD ─────────── -->
 <header class="masthead">
   <div class="masthead-meta">
-    <span><b>esp-harness</b> · 沉淀汇报 · monorepo</span>
-    <span>v1.5.0 · 2026·05·21</span>
+    <span><b>esp-harness</b> · 沉淀汇报 · 成熟项目</span>
+    <span>v1.6.0 · 2026·05·22</span>
   </div>
-  <h1>两个仓<br><span class="amp">合并成</span><span class="accent">一个</span></h1>
+  <h1>从 demo<br>变成<br><span class="accent">成熟项目</span></h1>
   <p class="lede">
-    继 v1.4 收口后, v1.5 完成<span class="pivot">仓库结构重构</span> — 原本两个仓
-    (<span class="num">esp32-harness-showcase</span> + <span class="num">esp32-harness-toolkit</span>) 合并成单一 monorepo
-    <span class="num">esp-harness</span>, 顶层按 artifact 类型切: components / tools / examples / sim-base / boards / docs.
-    新 <span class="num">esp-harness new</span> 命令带三种 vendoring 模式 (vendor 默认自包含 / link sibling / depend registry),
-    根 README 走三路 onboarding 分叉, 整合 CI 单 checkout. <span class="num">17</span> toolkit / <span class="num">20</span> scene / <span class="num">13</span> sim scene.
+    继 v1.5 单仓化后, v1.6 完成<span class="pivot">项目成熟化</span> — 整套品牌身份
+    (<span class="num">logo · wordmark · social card</span>), 项目宣言 (<span class="num">manifesto</span>),
+    FAQ + 故障排查文档, <span class="num">3 张 SVG 架构图</span>, <span class="num">真 homepage HTML</span>,
+    contributing + issue/PR 模板, 第二个最小化 example, GitHub repo metadata + Pages 部署
+    (<span class="num">caldis.github.io/esp-harness</span>). 失忆测试通过 — 看 README 30 秒认出,
+    manifesto 5 分钟读懂为什么, getting-started 10 分钟动手.
   </p>
 </header>
 
@@ -696,7 +698,37 @@
           <li><span class="check">✓</span><span><b>I7</b> 根 <code>README.md</code> 三路 onboarding + <code>AGENT.md</code> + <code>docs/architecture.md</code> + <code>docs/getting-started.md</code></span><span class="commit">~1200 行</span></li>
           <li><span class="check">✓</span><span><b>I8</b> <code>esp-harness new</code> 重设计 — vendor/link/depend 三模式, 生成 AGENT.md</span><span class="commit">init 保留作 alias</span></li>
           <li><span class="check">✓</span><span><b>I9</b> 端到端验证 — target build 13.8s / sim build / sim diff 13/13 / pytest 3/3 / manifest 17 cmds / new smoke</span><span class="commit">全过</span></li>
-          <li><span class="check">✓</span><span><b>I10</b> 单一 initial commit + v1.5.0 tag + 本汇报 HTML v4</span><span class="commit">本提交</span></li>
+          <li><span class="check">✓</span><span><b>I10</b> 单一 initial commit + v1.5.0 tag + 本汇报 HTML v4</span><span class="commit">52d4ee9</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC J — project maturity polish -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">J</div>
+      <div class="arc-meta"><b>项目成熟化</b><br>12 tasks · 5 hr<br>tag v1.6.0 (本汇报)</div>
+    </div>
+    <div>
+      <div class="arc-title">完整文档生态 +<br>视觉身份, <em>失忆测试</em>通过</div>
+      <div class="arc-body">
+        <p>v1.6 的目标只有一句话: <b>陌生人 (或失忆的作者) 30 秒认出
+        这是什么, 5 分钟读懂为什么, 10 分钟跑出第一个项目</b>。配套整
+        套成熟项目应有的文档生态 + 品牌身份。</p>
+        <ul class="arc-deliverables">
+          <li><span class="check">✓</span><span><b>J1</b> Logo + wordmark + social card + favicon + brand README</span><span class="commit">docs/brand/</span></li>
+          <li><span class="check">✓</span><span><b>J2</b> <code>docs/manifesto.md</code> — 项目哲学 + out-of-scope 边界声明</span><span class="commit">survive amnesia</span></li>
+          <li><span class="check">✓</span><span><b>J3</b> 根 README 重写为真正 landing page (badges / hero / 三路 / vs others 对比)</span><span class="commit">~250 行</span></li>
+          <li><span class="check">✓</span><span><b>J4</b> <code>docs/index.html</code> homepage (hero / terminal / 三路 / 架构 / 对比)</span><span class="commit">同 editorial 风</span></li>
+          <li><span class="check">✓</span><span><b>J5</b> <code>.github/</code> — CONTRIBUTING + 3 issue templates + PR template + config.yml</span><span class="commit">7 文件</span></li>
+          <li><span class="check">✓</span><span><b>J6</b> <code>docs/faq.md</code> (16 问答) + <code>docs/troubleshooting.md</code> (症状-修复 表)</span><span class="commit">amnesia friendly</span></li>
+          <li><span class="check">✓</span><span><b>J7</b> 3 张 SVG 架构图 (three-layers / dev-loop / repo-layout)</span><span class="commit">docs/diagrams/</span></li>
+          <li><span class="check">✓</span><span><b>J8</b> 第二个 example — <code>examples/hello-minimal/</code> (template integrity check)</span><span class="commit">~150 LOC</span></li>
+          <li><span class="check">✓</span><span><b>J9</b> GitHub repo metadata — description / homepage / 14 topics / wiki off</span><span class="commit">gh repo edit</span></li>
+          <li><span class="check">✓</span><span><b>J10</b> GitHub Pages 启用 — <code>caldis.github.io/esp-harness/</code> 走 master /docs</span><span class="commit">gh api</span></li>
+          <li><span class="check">✓</span><span><b>J11</b> Badges 收口 — 各 artifact README 顶部带 badge 条</span><span class="commit">视觉一致性</span></li>
+          <li><span class="check">✓</span><span><b>J12</b> v1.6.0 tag + 本汇报 HTML v5 + CHANGELOG entry</span><span class="commit">本提交</span></li>
         </ul>
       </div>
     </div>
@@ -991,7 +1023,7 @@
   </p>
 
   <div class="footer">
-    <span>monorepo: <a href="https://github.com/Caldis/esp-harness">Caldis/esp-harness</a> v1.5.0</span>
+    <span>monorepo: <a href="https://github.com/Caldis/esp-harness">Caldis/esp-harness</a> v1.6.0</span>
     <span>archived: <a href="https://github.com/Caldis/esp32-harness-showcase">esp32-harness-showcase</a> v1.4.0 · <a href="https://github.com/Caldis/esp32-harness-toolkit">esp32-harness-toolkit</a> v1.0.0</span>
   </div>
 </section>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 520" role="img" aria-label="esp-harness repo layout">
+  <title>esp-harness monorepo top-level layout</title>
+  <desc>Top-level directories grouped by artifact type: components (reusable C libs), tools (Python CLIs), examples (runnable firmware), sim-base (shared sim infrastructure), boards (vendored BSPs), docs (cross-cutting).</desc>
+
+  <defs>
+    <style>
+      .root { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; fill: #1c1814; }
+      .dir { font-family: 'IBM Plex Mono', monospace; font-size: 13px; fill: #1c1814; }
+      .annot { font-family: Fraunces, serif; font-size: 12px; font-style: italic; fill: #5a514a; }
+      .h { font-family: Fraunces, serif; font-size: 16px; font-style: italic; fill: #b8431a; }
+      .frame { fill: none; stroke: #d6cdb7; stroke-width: 1; }
+      .group-c { fill: #fdf9ee; stroke: #b8431a; stroke-width: 1.5; }
+      .group-t { fill: #fdf9ee; stroke: #344a36; stroke-width: 1.5; }
+      .group-e { fill: #fdf9ee; stroke: #b89020; stroke-width: 1.5; }
+      .group-i { fill: #fdf9ee; stroke: #1c1814; stroke-width: 1.5; }
+      .group-b { fill: #fdf9ee; stroke: #8a807a; stroke-width: 1.5; }
+      .group-d { fill: #fdf9ee; stroke: #5a514a; stroke-width: 1; stroke-dasharray: 3 2; }
+    </style>
+  </defs>
+
+  <!-- Root -->
+  <text x="40" y="40" class="root">esp-harness/</text>
+  <text x="220" y="40" class="annot">monorepo · v1.5.0 · MIT</text>
+
+  <!-- components/ — the LIBRARY -->
+  <g transform="translate(40, 60)">
+    <rect class="group-c" x="0" y="0" width="640" height="68" rx="4"/>
+    <text x="20" y="22" class="h">▸ components/</text>
+    <text x="140" y="22" class="annot">— reusable C libraries (ESP-IDF components)</text>
+    <text x="40" y="48" class="dir">aurora-harness/</text>
+    <text x="200" y="48" class="annot">console protocol · scene framework · toast · progress · screenshot</text>
+  </g>
+
+  <!-- tools/ — the TOOLKIT -->
+  <g transform="translate(40, 144)">
+    <rect class="group-t" x="0" y="0" width="640" height="68" rx="4"/>
+    <text x="20" y="22" class="h">▸ tools/</text>
+    <text x="140" y="22" class="annot">— host-side tools (pip-installable)</text>
+    <text x="40" y="48" class="dir">esp-harness/</text>
+    <text x="200" y="48" class="annot">17 commands · pyproject.toml · pytest tests</text>
+  </g>
+
+  <!-- examples/ — the DEMOS -->
+  <g transform="translate(40, 228)">
+    <rect class="group-e" x="0" y="0" width="640" height="68" rx="4"/>
+    <text x="20" y="22" class="h">▸ examples/</text>
+    <text x="140" y="22" class="annot">— runnable firmware (each self-contained)</text>
+    <text x="40" y="48" class="dir">aurora/</text>
+    <text x="200" y="48" class="annot">20 scenes · 9 peripherals · sim/ · golden/ · the reference</text>
+  </g>
+
+  <!-- sim-base/ — generic sim infra -->
+  <g transform="translate(40, 312)">
+    <rect class="group-i" x="0" y="0" width="640" height="58" rx="4"/>
+    <text x="20" y="22" class="h">▸ sim-base/</text>
+    <text x="140" y="22" class="annot">— generic host LVGL build template (shared by all examples' sim/)</text>
+    <text x="40" y="46" class="dir">include/ · mock_bsp.{c,h} · INTEGRATION.md · tools/setup.ps1</text>
+  </g>
+
+  <!-- boards/ — vendored BSPs -->
+  <g transform="translate(40, 386)">
+    <rect class="group-b" x="0" y="0" width="640" height="58" rx="4"/>
+    <text x="20" y="22" class="h">▸ boards/</text>
+    <text x="140" y="22" class="annot">— vendored Board Support Packages (one dir per board)</text>
+    <text x="40" y="46" class="dir">esp32_s3_touch_amoled_2_16/</text>
+    <text x="290" y="46" class="annot">Waveshare AMOLED demo board</text>
+  </g>
+
+  <!-- docs/ — cross-cutting -->
+  <g transform="translate(40, 460)">
+    <rect class="group-d" x="0" y="0" width="640" height="48" rx="4"/>
+    <text x="20" y="22" class="h">▸ docs/</text>
+    <text x="140" y="22" class="annot">— cross-cutting docs · architecture · manifesto · brand · index.html homepage</text>
+  </g>
+</svg>

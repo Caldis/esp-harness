@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question on a specific workflow
+    url: https://github.com/Caldis/esp-harness/discussions
+    about: For general questions / brainstorms, please use Discussions.
+  - name: AI session onboarding
+    url: https://github.com/Caldis/esp-harness/blob/master/AGENT.md
+    about: If you're an AI session looking for the entry point — read AGENT.md.

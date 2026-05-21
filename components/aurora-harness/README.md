@@ -1,5 +1,12 @@
 # aurora-harness
 
+[![component](https://img.shields.io/badge/component-aurora--harness-b8431a)](./idf_component.yml)
+[![version](https://img.shields.io/badge/version-1.4.0-1c1814)](./idf_component.yml)
+[![ESP-IDF](https://img.shields.io/badge/ESP--IDF-≥5.0-1c1814)](https://docs.espressif.com/projects/esp-idf/)
+[![LVGL](https://img.shields.io/badge/LVGL-9.x-1c1814)](https://lvgl.io/)
+[![docs](https://img.shields.io/badge/docs-API_reference-b8431a)](./README.md)
+[![porting](https://img.shields.io/badge/porting-PORTING.md-344a36)](./PORTING.md)
+
 > Reusable ESP-IDF component: line-protocol console + LVGL scene framework.
 > The pair that turns a one-off device into an AI-driveable dev loop.
 

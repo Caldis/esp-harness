@@ -1,19 +1,26 @@
-# aurora — esp32-harness-showcase
+# Aurora — reference firmware
+
+[![example](https://img.shields.io/badge/example-aurora-b8431a)](./CMakeLists.txt)
+[![scenes](https://img.shields.io/badge/scenes-20-1c1814)](./main/scenes/)
+[![board](https://img.shields.io/badge/board-Waveshare_ESP32--S3--Touch--AMOLED--2.16-1c1814)](https://www.waveshare.com/esp32-s3-touch-amoled-2.16.htm)
+[![sim](https://img.shields.io/badge/sim-13_scenes_host--runnable-344a36)](./sim/)
+[![harness](https://img.shields.io/badge/aurora--harness-vendored-b8431a)](../../components/aurora-harness/)
 
 A generative-art companion piece for the **Waveshare ESP32-S3-Touch-AMOLED-2.16**
 (466 × 466 round AMOLED, CO5300 driver, CST9217 touch) — and the
-**reference firmware** for a reusable AI-driven dev-loop scaffold.
-Built end-to-end by an AI agent — no human typed any C in this repo.
+**reference firmware** for the esp-harness monorepo. 20 scenes
+exercising every onboard peripheral. Built end-to-end by an AI agent —
+no human typed any C in this repo.
 
-**Sibling project: [`esp32-harness-toolkit`](https://github.com/Caldis/esp32-harness-toolkit)** ← the CLI the AI uses to build / flash / monitor / screenshot the firmware.
+→ Part of the [esp-harness monorepo](../../README.md). For the full
+ecosystem context see the [root README](../../README.md).
 
-The two repos are designed as a symbiotic pair:
-* The **toolkit** is the leverage — it gives an AI agent eyes, fingers, and a runway.
-* The **showcase** is the goal *and* the scaffold reference — its needs
-  (visual verification, touch testing, scene navigation, framebuffer
-  inspection) drive what the toolkit must support, and its
-  `components/aurora-harness/` is designed to be lifted into any other
-  ESP-IDF + LVGL project.
+This example uses:
+
+- **`components/aurora-harness/`** — the C library (console + scene framework + overlays + default cmds)
+- **`tools/esp-harness/`** — the host CLI to build / flash / monitor / sim
+- **`boards/esp32_s3_touch_amoled_2_16/`** — the Waveshare BSP (auto-resolved)
+- **`sim-base/`** — the host LVGL build infrastructure (mock_bsp + ESP-IDF stubs)
 
 ## What's in the box (v1.2)
 

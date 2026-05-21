@@ -1,0 +1,15 @@
+# Recommended starting Kconfig values for an aurora-harness project.
+# Conservative defaults; tune per your board.
+
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# LVGL typically needs PSRAM for full-screen buffers.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+
+# console_protocol prefers USB-Serial-JTAG (no extra wires on most dev kits).
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+CONFIG_NVS_ENABLED=y

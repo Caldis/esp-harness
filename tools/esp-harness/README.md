@@ -1,10 +1,21 @@
-# esp-harness
+# esp-harness (CLI)
 
-Agent-friendly CLI toolkit for ESP-IDF projects on Windows.
-**The primary user is an AI agent.** A human runs it occasionally for sanity
-checks; an LLM runs it every iteration.
+[![pkg](https://img.shields.io/badge/pkg-esp--harness-b8431a)](./pyproject.toml)
+[![version](https://img.shields.io/badge/version-1.5.0-1c1814)](./pyproject.toml)
+[![python](https://img.shields.io/badge/python-≥3.10-1c1814)](./pyproject.toml)
+[![tests](https://img.shields.io/badge/tests-3%2F3_passing-344a36)](./tests/)
+[![cmds](https://img.shields.io/badge/cmds-17-1c1814)](./src/esp_harness/commands/)
+[![manual](https://img.shields.io/badge/manual-AGENT.md-b8431a)](./AGENT.md)
 
-[Companion showcase project: `esp32-harness-showcase` (Aurora)](https://github.com/Caldis/esp32-harness-showcase)
+Host-side Python CLI for the esp-harness monorepo — `build` / `flash` /
+`monitor` / `run` / `sim` / `bench` / `manifest` / `doctor` / `test` /
+`new` / `console` / and more. **The primary user is an AI agent.** A
+human runs it occasionally for sanity checks; an LLM runs it every
+iteration.
+
+→ Part of the [esp-harness monorepo](https://github.com/Caldis/esp-harness).
+For the full ecosystem (reusable C component, reference firmware, host
+simulator), see the [root README](../../README.md).
 
 > **For the full API + workflow → read [`AGENT.md`](./AGENT.md).**
 > This README is a tasting menu; `AGENT.md` is the manual.

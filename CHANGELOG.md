@@ -6,6 +6,89 @@ Repo-level milestones. Per-artifact changelogs live in:
 - [`tools/esp-harness/CHANGELOG.md`](./tools/esp-harness/CHANGELOG.md) (toolkit history; preserved from `esp32-harness-toolkit`)
 - [`examples/aurora/CHANGELOG.md`](./examples/aurora/CHANGELOG.md) (Aurora demo history)
 
+## [1.6.0] — 2026-05-22
+
+**Project maturity polish.** Documentation, branding, and onboarding
+ecosystem brought to a level where a fresh reader — or an author
+returning after total amnesia — can get oriented in under 10 minutes.
+
+### Brand + visual identity (`docs/brand/`)
+
+- Full brand assets: `logo.svg` (light), `logo-dark.svg` (dark variant),
+  `wordmark.svg` (mark + serif wordmark), `favicon.svg` (32 px tab icon),
+  `social-card.svg` (1280×640 GitHub OG image). Plus a `brand/README.md`
+  documenting the mark, colors, typography, don'ts.
+- The mark: an "H" reframed as a control harness — two black verticals
+  (device side), one rust cross-bar (dev-loop signal), a paper dot at
+  center (manifest discovery point), a dashed outer frame (device
+  boundary).
+
+### Docs ecosystem (`docs/`)
+
+- **`manifesto.md`** — the "why" doc. Design philosophy, what we
+  believe, explicit out-of-scope list, what "done" looks like per layer,
+  how we make decisions. Built to survive the amnesia test.
+- **`faq.md`** — 16+ common questions: what is it, why not PIO, do I
+  need the hardware, sim vs device fidelity, version pinning, license.
+- **`troubleshooting.md`** — symptom-based fixes: qmi8658 patch, M_PI
+  redefinition, SDL2 link order, target detection, sim build issues,
+  Python install issues. Each entry has the exact command.
+- **`diagrams/`** — three SVG architecture diagrams: three-layer stack,
+  dev loop concentric speeds, repo layout. Inlined in homepage,
+  standalone for slides.
+- **`index.html`** — proper homepage with hero / terminal / three paths
+  / architecture / comparison table. Used as the GitHub Pages entry
+  point. Same editorial design language as the progress report.
+
+### Root README → landing page
+
+Rewrote root `README.md` as a proper landing page: logo + badges, "What
+this is" table, 30-second quickstart, three-path onboarding, comparison
+vs raw ESP-IDF / PlatformIO / Arduino / LVGL official sim, status block.
+
+### New example (`examples/hello-minimal/`)
+
+The smallest possible esp-harness consumer (one scene, one console
+command, no peripherals). Proves the `esp-harness new` template
+integrity and documents "what the floor looks like" for new projects.
+Uses `link` vendoring mode with the path resolved relatively.
+
+### Contributing infrastructure (`.github/`)
+
+- **`CONTRIBUTING.md`** — setup, dev loop, what we accept / decline,
+  PR style, what good looks like.
+- **`ISSUE_TEMPLATE/{bug,feature,question}.md`** + `config.yml` —
+  structured issue intake with environment info pre-prompted.
+- **`PULL_REQUEST_TEMPLATE.md`** — checklist including artifact
+  affiliation, semver bump on component change, manifest update on
+  new toolkit command.
+
+### Per-artifact README polish
+
+Each of `components/aurora-harness/`, `tools/esp-harness/`, and
+`examples/aurora/` README now has a badge bar at the top showing its
+version / dependencies / status. Cross-link to the monorepo root and
+to each other. Old "esp32-harness-showcase as sibling repo" framing
+removed.
+
+### GitHub repo metadata
+
+Via `gh repo edit`: description set, homepage URL set, 14 topics
+added (esp32 / esp-idf / esp32-s3 / lvgl / embedded / firmware /
+ai-driven / developer-tools / scaffolding / console-protocol /
+monorepo / sdl2 / simulator / harness). Wiki disabled.
+
+### GitHub Pages
+
+Source: `master` branch, `/docs` path. Serves `docs/index.html` at
+https://caldis.github.io/esp-harness/.
+
+### Status
+
+- Verified post-changes: `esp-harness doctor` 8/8 OK · `esp-harness
+  test` 3/3 PASS · `esp-harness manifest` 17 toolkit cmds.
+- All Phase J deliverables in this single release.
+
 ## [1.5.0] — 2026-05-21
 
 **Monorepo migration.** Merges the v1.0–v1.4 history of two predecessor

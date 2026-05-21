@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="esp-harness">
+  <title>esp-harness</title>
+  <desc>Two parallel vertical strokes joined by a horizontal cross-bar — the H letterform reframed as a control harness. The dashed outer ring is the device boundary; the orange cross-bar is the dev-loop signal. A center dot marks the manifest discovery point.</desc>
+
+  <!-- Device outline — dashed, low-emphasis -->
+  <rect x="14" y="14" width="92" height="92" rx="18"
+        fill="none" stroke="#1c1814" stroke-width="2"
+        stroke-dasharray="5 4" opacity="0.35"/>
+
+  <!-- H letterform: left vertical -->
+  <rect x="36" y="32" width="11" height="56" rx="1" fill="#1c1814"/>
+  <!-- H letterform: right vertical -->
+  <rect x="73" y="32" width="11" height="56" rx="1" fill="#1c1814"/>
+
+  <!-- Horizontal cross-bar = the harness / control signal (accent) -->
+  <rect x="36" y="55" width="48" height="10" rx="1" fill="#b8431a"/>
+
+  <!-- Manifest discovery dot — single pixel of awareness -->
+  <circle cx="60" cy="60" r="3.2" fill="#f3eee2"/>
+</svg>

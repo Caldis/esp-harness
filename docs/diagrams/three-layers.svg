@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 540" role="img" aria-label="esp-harness three-layer architecture">
+  <title>esp-harness — three layers</title>
+  <desc>Layer 1 toolkit (host Python CLI) talks down to Layer 2 (aurora-harness C component), which is the substrate for Layer 3 (your application). A vertical "manifest" channel runs alongside the stack as the single discovery surface.</desc>
+
+  <defs>
+    <style>
+      .label-h { font-family: Fraunces, serif; font-size: 22px; font-style: italic; fill: #b8431a; }
+      .label-sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; fill: #5a514a; }
+      .label-body { font-family: 'IBM Plex Mono', monospace; font-size: 11px; fill: #1c1814; }
+      .label-tiny { font-family: 'IBM Plex Mono', monospace; font-size: 9px; fill: #8a807a; }
+      .layer { fill: #fdf9ee; stroke: #1c1814; stroke-width: 1.5; }
+      .accent-bar { fill: #b8431a; }
+      .flow { stroke: #1c1814; stroke-width: 1.5; fill: none; }
+      .flow-dashed { stroke: #8a807a; stroke-width: 1; stroke-dasharray: 4 3; fill: none; }
+      .manifest-rail { fill: #b8431a; opacity: 0.08; }
+    </style>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1c1814"/>
+    </marker>
+    <marker id="arr-fade" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a807a"/>
+    </marker>
+  </defs>
+
+  <!-- Manifest discovery rail (background, vertical on the right) -->
+  <rect class="manifest-rail" x="600" y="40" width="80" height="460" rx="6"/>
+  <text x="640" y="270" class="label-h" text-anchor="middle" transform="rotate(-90, 640, 270)">esp-harness manifest --json</text>
+  <text x="640" y="310" class="label-tiny" text-anchor="middle" transform="rotate(-90, 640, 310)">single discovery surface — flattens all three layers</text>
+
+  <!-- Layer 1 — Toolkit -->
+  <g transform="translate(40, 50)">
+    <rect class="layer" x="0" y="0" width="540" height="110" rx="6"/>
+    <text x="20" y="32" class="label-h">Layer 1 · Toolkit</text>
+    <text x="20" y="52" class="label-sub">tools/esp-harness/  (Python CLI, pip-installable)</text>
+    <g transform="translate(20, 70)">
+      <text class="label-body" y="0">build · flash · monitor · run</text>
+      <text class="label-body" y="16">sim {snapshot, diff, update-golden, record}</text>
+    </g>
+    <g transform="translate(290, 70)">
+      <text class="label-body" y="0">bench {baseline, compare}</text>
+      <text class="label-body" y="16">manifest · doctor · test · new · console</text>
+    </g>
+  </g>
+
+  <!-- Arrow: Layer 1 → Layer 2 -->
+  <g transform="translate(310, 160)">
+    <line class="flow" x1="0" y1="0" x2="0" y2="38" marker-end="url(#arr)"/>
+    <text class="label-tiny" x="8" y="22">subprocess + JSON + serial</text>
+  </g>
+
+  <!-- Layer 2 — aurora-harness component -->
+  <g transform="translate(40, 210)">
+    <rect class="layer" x="0" y="0" width="540" height="140" rx="6"/>
+    <text x="20" y="32" class="label-h">Layer 2 · aurora-harness</text>
+    <text x="20" y="52" class="label-sub">components/aurora-harness/  (reusable C component · board-agnostic)</text>
+    <g transform="translate(20, 75)">
+      <text class="label-body" y="0">console_protocol  — OK / ERR / EVT framing + payload tags</text>
+      <text class="label-body" y="16">scene_framework   — deck of full-screen LVGL views + hooks</text>
+      <text class="label-body" y="32">toast + progress  — overlay primitives on lv_layer_top()</text>
+      <text class="label-body" y="48">default_cmds      — ?stat / scene / tap / swipe / ?dump</text>
+    </g>
+    <!-- BSP iface tag, bottom -->
+    <rect x="380" y="110" width="140" height="22" rx="3" fill="#ebe5d6" stroke="#1c1814" stroke-width="0.5"/>
+    <text x="450" y="125" class="label-body" text-anchor="middle">bsp_iface  (2 functions)</text>
+  </g>
+
+  <!-- Arrow: Layer 2 → Layer 3 -->
+  <g transform="translate(310, 350)">
+    <line class="flow" x1="0" y1="0" x2="0" y2="38" marker-end="url(#arr)"/>
+    <text class="label-tiny" x="8" y="22">consumer = your app</text>
+  </g>
+
+  <!-- Layer 3 — Application -->
+  <g transform="translate(40, 400)">
+    <rect class="layer" x="0" y="0" width="540" height="110" rx="6"/>
+    <text x="20" y="32" class="label-h">Layer 3 · Application</text>
+    <text x="20" y="52" class="label-sub">examples/&lt;your-thing&gt;/  (your firmware — owns app_main)</text>
+    <g transform="translate(20, 75)">
+      <text class="label-body" y="0">app_main wiring · scenes · peripheral drivers</text>
+      <text class="label-body" y="16">app-specific console cmds (?audio / ?sd / ?wifi / ?ota / ...)</text>
+    </g>
+  </g>
+</svg>

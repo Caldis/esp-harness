@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" role="img" aria-label="esp-harness dev loop">
+  <title>The esp-harness dev loop</title>
+  <desc>Three concentric speed loops: 5-second sim diff for UI iteration, 8-second bench compare for performance regression, 30-second device flash for full validation.</desc>
+
+  <defs>
+    <style>
+      .h { font-family: Fraunces, serif; font-size: 22px; font-style: italic; fill: #b8431a; }
+      .h2 { font-family: Fraunces, serif; font-size: 16px; fill: #1c1814; }
+      .lab { font-family: 'IBM Plex Mono', monospace; font-size: 12px; fill: #1c1814; }
+      .sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; fill: #5a514a; }
+      .speed { font-family: Fraunces, serif; font-size: 16px; font-style: italic; fill: #b8431a; }
+      .loop { fill: none; stroke-width: 2; }
+    </style>
+    <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1c1814"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="360" y="35" text-anchor="middle" class="h">Three concentric loops</text>
+  <text x="360" y="56" text-anchor="middle" class="sub">faster inner = run more often</text>
+
+  <!-- Concentric rings (drawn outermost first) -->
+  <!-- Outer: device, 30 s -->
+  <circle cx="360" cy="220" r="140" class="loop" stroke="#1c1814" opacity="0.35"/>
+  <text x="360" y="100" text-anchor="middle" class="speed">~30 s · device build + flash</text>
+  <text x="360" y="118" text-anchor="middle" class="sub">runs every full validation</text>
+
+  <!-- Middle: bench, 8 s -->
+  <circle cx="360" cy="220" r="95" class="loop" stroke="#b8431a" opacity="0.5"/>
+  <text x="360" y="138" text-anchor="middle" class="speed" fill="#b8431a">~8 s · bench compare</text>
+  <text x="360" y="156" text-anchor="middle" class="sub">runs when perf might shift</text>
+
+  <!-- Inner: sim diff, 5 s -->
+  <circle cx="360" cy="220" r="55" class="loop" stroke="#344a36" opacity="0.7" stroke-width="3"/>
+  <text x="360" y="218" text-anchor="middle" class="h2" fill="#344a36">sim diff</text>
+  <text x="360" y="236" text-anchor="middle" class="lab" fill="#344a36">5 s</text>
+
+  <!-- Annotations on the right -->
+  <g transform="translate(560, 130)">
+    <text x="0" y="0" class="h2">Every loop:</text>
+    <g transform="translate(0, 22)">
+      <text class="lab" y="0">edit .c</text>
+      <text class="sub" y="16">type your change</text>
+    </g>
+    <g transform="translate(0, 60)">
+      <text class="lab" y="0">↳ run the right loop</text>
+      <text class="sub" y="16">UI change → sim diff</text>
+      <text class="sub" y="30">perf-y → bench compare</text>
+      <text class="sub" y="44">peripheral → device flash</text>
+    </g>
+    <g transform="translate(0, 132)">
+      <text class="lab" y="0">↳ JSON output</text>
+      <text class="sub" y="16">exit code = pass/fail</text>
+      <text class="sub" y="30">no manual parsing</text>
+    </g>
+  </g>
+
+  <!-- Annotations on the left -->
+  <g transform="translate(20, 160)">
+    <text x="0" y="0" class="h2">Manifest first.</text>
+    <text class="sub" y="20">esp-harness manifest --json</text>
+    <text class="sub" y="34">tells you which loop applies</text>
+    <text class="sub" y="48">to which capability.</text>
+  </g>
+</svg>
