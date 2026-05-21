@@ -1,0 +1,109 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF) 5.4.0 Project Minimal Configuration
+#
+# v1.5 monorepo: IDF_TARGET added explicitly so a fresh clone (no local
+# sdkconfig present) defaults to esp32s3 — sdkconfig is gitignored so
+# only sdkconfig.defaults is the source of truth at first build.
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_IDF_TARGET_ESP32S3=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+CONFIG_SPIRAM_RODATA=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_XIP_FROM_PSRAM=y
+CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y
+CONFIG_ESP32S3_DATA_CACHE_64KB=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
+
+CONFIG_FREERTOS_HZ=1000
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_USE_CLIB_STRING=y
+CONFIG_LV_USE_CLIB_SPRINTF=y
+# Aurora targets 30 fps (33 ms refresh) instead of 60 fps — the QSPI flush
+# to CO5300 can't keep up with full-screen invalidations at 60 fps when
+# scenes have multiple animated widgets, and ambient art looks fine at 30.
+CONFIG_LV_DEF_REFR_PERIOD=33
+CONFIG_LV_OS_FREERTOS=y
+CONFIG_LV_OBJ_STYLE_CACHE=y
+
+CONFIG_LV_DRAW_SW_DRAW_UNIT_CNT=2
+# Disabled: ESP-IDF v6.0 toolchain rejects multiple .iram1.N sections (was
+# CONFIG_LV_ATTRIBUTE_FAST_MEM_USE_IRAM=y under v5.5 + older GCC). Setting
+# this to =n keeps LVGL fast-mem functions in flash; perf hit is small for
+# a static viewer like this one.
+CONFIG_LV_ATTRIBUTE_FAST_MEM_USE_IRAM=n
+CONFIG_LV_FONT_MONTSERRAT_12=y
+CONFIG_LV_FONT_MONTSERRAT_16=y
+CONFIG_LV_FONT_MONTSERRAT_18=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+CONFIG_LV_FONT_MONTSERRAT_22=y
+CONFIG_LV_FONT_MONTSERRAT_24=y
+CONFIG_LV_FONT_MONTSERRAT_26=y
+CONFIG_LV_USE_FONT_COMPRESSED=y
+CONFIG_LV_TXT_BREAK_CHARS=" ,.;:-_"
+# Sysmon + perf monitor add an always-on overlay that we don't want.
+CONFIG_LV_USE_SYSMON=n
+CONFIG_LV_USE_PERF_MONITOR=n
+CONFIG_LV_USE_IMGFONT=y
+# LVGL built-in demos disabled — we provide our own UI in main/.
+CONFIG_LV_USE_DEMO_WIDGETS=n
+CONFIG_LV_USE_DEMO_BENCHMARK=n
+CONFIG_LV_USE_DEMO_RENDER=n
+CONFIG_LV_USE_DEMO_SCROLL=n
+CONFIG_LV_USE_DEMO_STRESS=n
+CONFIG_LV_USE_DEMO_TRANSFORM=n
+CONFIG_LV_USE_DEMO_MUSIC=n
+CONFIG_LV_USE_DEMO_FLEX_LAYOUT=n
+CONFIG_LV_USE_DEMO_MULTILANG=n
+
+# Aurora needs framebuffer snapshot for the ?dump command.
+CONFIG_LV_USE_SNAPSHOT=y
+
+CONFIG_IDF_EXPERIMENTAL_FEATURES=y
+
+# Phase I.2 — Bluetooth LE (NimBLE host). Scan-only for Aurora, no
+# advertising or services. Pulls the controller + NimBLE library in.
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_CONTROLLER_ENABLED=y
+# We don't run a GATT server, so keep the stack minimal.
+CONFIG_BT_NIMBLE_ROLE_OBSERVER=y
+CONFIG_BT_NIMBLE_ROLE_BROADCASTER=n
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=n
+# WiFi + BLE share the radio on ESP32-S3 — software coexistence
+# arbitrates airtime. Without this, the host's hci init bails out at
+# boot ("hci inits failed").
+CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y
+# NimBLE host allocates HCI buffers and event memory pools. Aurora's
+# internal SRAM is heavily used by LVGL (96 KB double buffer) and
+# audio I2S DMA, so the default INTERNAL allocation mode runs out of
+# contiguous blocks. EXTERNAL routes most NimBLE allocations to PSRAM,
+# leaving internal SRAM for tasks and DMA.
+CONFIG_BT_NIMBLE_MEM_ALLOC_MODE_INTERNAL=n
+CONFIG_BT_NIMBLE_MEM_ALLOC_MODE_EXTERNAL=y
+
+# WiFi static buffers also fight for internal SRAM and can't be moved
+# to PSRAM (they back DMA). Defaults are sized for router/gateway use;
+# trim for our scan-only workload. The Rx-BA window also drops in step
+# so the WIFI_RX_BA_WIN ≤ STATIC_RX_BUFFER_NUM × 2 constraint holds.
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=4
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=8
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=8
+CONFIG_ESP_WIFI_RX_BA_WIN=6
+# Let WiFi also park its main objects in PSRAM where possible.
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+# Push small allocations (LVGL widget structs, NimBLE host pools, etc.)
+# to PSRAM. Default ALWAYSINTERNAL threshold of 16 KB kept too much in
+# internal SRAM with 9 scenes worth of widgets, blocking WiFi.
+# Anything ≤ 1 KB goes wherever the allocator picks (usually PSRAM
+# under USE_MALLOC=y); larger allocations prefer PSRAM.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=1024
+
+

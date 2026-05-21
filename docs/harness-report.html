@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora × esp-harness — 沉淀汇报 v1.4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Geist:wght@300..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:     #f3eee2;
+    --paper-2:   #ebe5d6;
+    --rule:      #d6cdb7;
+    --ink:       #1c1814;
+    --ink-mute:  #5a514a;
+    --ink-fade:  #8a807a;
+    --rust:      #b8431a;
+    --rust-deep: #8a3214;
+    --moss:      #344a36;
+    --gold:      #b89020;
+
+    --serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --sans:  "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono:  "IBM Plex Mono", "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: clamp(15px, 1vw + 0.5rem, 17px);
+    line-height: 1.55;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(184,67,26,0.04), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(52,74,54,0.04), transparent 60%);
+    pointer-events: none; z-index: -1;
+  }
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 clamp(24px, 5vw, 80px); }
+
+  .masthead {
+    padding-top: clamp(48px, 8vh, 96px);
+    padding-bottom: clamp(48px, 12vh, 120px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .masthead-meta {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 0.78rem;
+    letter-spacing: 0.02em; text-transform: uppercase;
+    color: var(--ink-mute);
+    padding-bottom: clamp(32px, 6vh, 56px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .masthead-meta b { color: var(--ink); font-weight: 600; }
+  .masthead h1 {
+    font-family: var(--serif); font-weight: 350;
+    font-size: clamp(3rem, 9vw, 7.5rem);
+    letter-spacing: -0.04em; line-height: 0.95;
+    margin-top: clamp(32px, 6vh, 64px);
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+  }
+  .masthead h1 .accent {
+    color: var(--rust); font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 80, "WONK" 1;
+  }
+  .masthead h1 .amp {
+    color: var(--ink-fade); font-style: italic;
+    margin: 0 0.1em; font-variation-settings: "opsz" 144, "SOFT" 100;
+  }
+  .lede {
+    max-width: 60ch; margin-top: clamp(32px, 4vh, 48px);
+    font-family: var(--serif);
+    font-size: clamp(1.1rem, 1.5vw + 0.4rem, 1.55rem);
+    line-height: 1.4; color: var(--ink); font-weight: 350;
+    font-variation-settings: "opsz" 24;
+  }
+  .lede .num {
+    font-family: var(--serif); font-style: italic;
+    font-weight: 500; color: var(--rust);
+    font-variation-settings: "opsz" 24, "SOFT" 80;
+  }
+  .lede .pivot {
+    color: var(--moss); font-style: italic;
+    font-variation-settings: "opsz" 24, "SOFT" 80, "WONK" 1;
+  }
+
+  section { padding-top: clamp(64px, 10vh, 120px); padding-bottom: clamp(32px, 6vh, 60px); }
+  .section-num {
+    font-family: var(--mono); font-size: 0.72rem;
+    letter-spacing: 0.15em; color: var(--rust);
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  h2 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(1.8rem, 3.5vw, 3.2rem);
+    letter-spacing: -0.02em; line-height: 1.05;
+    margin-bottom: 36px;
+    font-variation-settings: "opsz" 72;
+    max-width: 22ch;
+  }
+  h2 em {
+    color: var(--rust);
+    font-variation-settings: "opsz" 72, "SOFT" 80;
+  }
+  h3 {
+    font-family: var(--serif); font-weight: 500;
+    font-size: 1.15rem;
+    font-variation-settings: "opsz" 24;
+    margin-bottom: 8px;
+  }
+
+  /* ── GLANCE ──────────────────────────────────────────── */
+  .glance {
+    font-family: var(--serif);
+    font-size: clamp(1.25rem, 2.2vw, 2.1rem);
+    line-height: 1.45; font-weight: 300;
+    max-width: 38ch; margin-bottom: clamp(48px, 8vh, 80px);
+  }
+  .glance .n {
+    color: var(--rust); font-style: italic; font-weight: 500;
+    font-feature-settings: "tnum";
+  }
+  .glance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px; background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .glance-cell {
+    background: var(--paper); padding: 28px 24px 24px;
+  }
+  .glance-cell .big {
+    font-family: var(--serif);
+    font-size: clamp(2.4rem, 4vw, 3.4rem);
+    font-weight: 400; line-height: 1;
+    font-variation-settings: "opsz" 96, "SOFT" 30;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.02em;
+  }
+  .glance-cell .big.rust { color: var(--rust); }
+  .glance-cell .big.moss { color: var(--moss); }
+  .glance-cell .label {
+    margin-top: 14px; font-family: var(--mono);
+    font-size: 0.72rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-mute);
+  }
+  .glance-cell .sub {
+    margin-top: 6px; font-size: 0.85rem;
+    color: var(--ink-mute); line-height: 1.4;
+  }
+
+  /* ── ARC TIMELINE ────────────────────────────────────── */
+  .arc {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: clamp(20px, 4vw, 56px);
+    padding: clamp(36px, 6vh, 56px) 0;
+    border-top: 1px solid var(--rule);
+  }
+  .arc:last-of-type { border-bottom: 1px solid var(--rule); }
+  .arc-label {
+    font-family: var(--serif); font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 1;
+    font-size: clamp(3rem, 6vw, 5rem);
+    line-height: 0.85;
+    color: var(--rust); font-weight: 400;
+  }
+  .arc-meta {
+    font-family: var(--mono); font-size: 0.72rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-fade);
+    margin-top: 8px; line-height: 1.5;
+  }
+  .arc-meta b { color: var(--ink); font-weight: 600; }
+  .arc-title {
+    font-family: var(--serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.4rem);
+    font-weight: 400; line-height: 1.1;
+    letter-spacing: -0.015em;
+    margin-bottom: 24px;
+    font-variation-settings: "opsz" 48;
+  }
+  .arc-body { max-width: 62ch; }
+  .arc-body p {
+    margin-bottom: 16px; color: var(--ink); line-height: 1.6;
+  }
+  .arc-quote {
+    margin-top: 24px;
+    padding-left: 20px;
+    border-left: 2px solid var(--rust);
+    font-family: var(--serif); font-style: italic;
+    color: var(--ink-mute);
+    font-size: 1.05rem;
+    font-variation-settings: "opsz" 24, "SOFT" 60;
+    line-height: 1.5;
+  }
+  .arc-deliverables {
+    margin-top: 28px; list-style: none;
+  }
+  .arc-deliverables li {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    align-items: baseline;
+    gap: 14px; padding: 10px 0;
+    border-bottom: 1px dashed var(--rule);
+    font-size: 0.95rem;
+  }
+  .arc-deliverables li:last-child { border-bottom: none; }
+  .arc-deliverables .check {
+    color: var(--moss);
+    font-family: var(--serif);
+    font-size: 1.1rem; line-height: 1;
+  }
+  .arc-deliverables .commit {
+    font-family: var(--mono);
+    font-size: 0.78rem; color: var(--ink-fade);
+  }
+  .arc-deliverables code {
+    font-family: var(--mono); font-size: 0.85em;
+    color: var(--rust-deep); background: var(--paper-2);
+    padding: 1px 5px; border-radius: 2px;
+  }
+
+  /* ── SCAFFOLD CALLOUT ─────────────────────────────────── */
+  .scaffold {
+    background: var(--moss);
+    color: var(--paper);
+    padding: clamp(56px, 10vh, 96px) clamp(24px, 5vw, 80px);
+    margin: clamp(64px, 10vh, 120px) calc(-1 * clamp(24px, 5vw, 80px));
+  }
+  .scaffold h2 { color: var(--paper); max-width: 20ch; }
+  .scaffold h2 em { color: #c7e0a4; font-style: italic; font-variation-settings: "opsz" 72, "SOFT" 100; }
+  .scaffold-body {
+    max-width: 60ch;
+    margin-top: 32px;
+    font-family: var(--serif);
+    font-size: 1.2rem; line-height: 1.55;
+    color: rgba(243,238,226,0.92); font-weight: 300;
+  }
+  .scaffold-body code {
+    font-family: var(--mono); font-size: 0.85em;
+    color: #c7e0a4; background: rgba(0,0,0,0.2);
+    padding: 1px 5px; border-radius: 2px;
+  }
+
+  /* ── API INVENTORY ────────────────────────────────────── */
+  .api-block {
+    margin-top: 24px;
+  }
+  .api-block .head {
+    font-family: var(--mono);
+    font-size: 0.78rem; letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--rust);
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 0;
+  }
+  .api-block dl {
+    margin: 0; padding: 0;
+  }
+  .api-block dt {
+    font-family: var(--mono);
+    font-size: 0.92rem;
+    color: var(--ink);
+    padding: 12px 0 2px;
+    border-top: 1px solid var(--paper-2);
+  }
+  .api-block dt:first-of-type { border-top: none; }
+  .api-block dd {
+    font-size: 0.92rem; color: var(--ink-mute);
+    margin: 0 0 10px 0; line-height: 1.5;
+  }
+
+  /* ── TWO-COLUMN ──────────────────────────────────────── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(32px, 5vw, 72px);
+    margin-top: 32px;
+  }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── ROADMAP ─────────────────────────────────────────── */
+  .roadmap-row {
+    display: grid;
+    grid-template-columns: 60px 60px 1fr auto;
+    gap: clamp(16px, 3vw, 32px);
+    padding: 22px 0;
+    border-top: 1px solid var(--rule);
+    align-items: baseline;
+  }
+  .roadmap-row:last-of-type { border-bottom: 1px solid var(--rule); }
+  .roadmap-row .pri {
+    font-family: var(--serif); font-style: italic;
+    font-size: 1.5rem; color: var(--rust);
+    font-variation-settings: "opsz" 36, "SOFT" 80;
+  }
+  .roadmap-row .effort {
+    font-family: var(--mono); font-size: 0.78rem;
+    color: var(--ink-fade); letter-spacing: 0.05em;
+  }
+  .roadmap-row .title {
+    font-family: var(--serif); font-size: 1.2rem;
+    font-variation-settings: "opsz" 24; margin-bottom: 6px;
+  }
+  .roadmap-row .title.done { color: var(--moss); text-decoration: line-through; text-decoration-thickness: 1px; }
+  .roadmap-row .desc {
+    font-size: 0.92rem; color: var(--ink-mute);
+    max-width: 60ch; line-height: 1.5;
+  }
+  .roadmap-row .gate {
+    font-family: var(--mono); font-size: 0.7rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--moss);
+    padding: 4px 10px;
+    border: 1px solid var(--moss);
+    border-radius: 99px;
+    white-space: nowrap;
+  }
+  .roadmap-row .gate.done { background: var(--moss); color: var(--paper); }
+  .roadmap-row .gate.blocked { color: var(--gold); border-color: var(--gold); }
+  .roadmap-row .gate.future { color: var(--ink-fade); border-color: var(--ink-fade); }
+  @media (max-width: 700px) {
+    .roadmap-row { grid-template-columns: 60px 1fr; }
+    .roadmap-row .effort, .roadmap-row .gate { grid-column: 2; }
+  }
+
+  /* ── ASCII ────────────────────────────────────────────── */
+  .ascii-frame {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    padding: clamp(20px, 3vw, 36px);
+    margin-top: 32px;
+    overflow-x: auto;
+  }
+  .ascii-frame pre {
+    font-family: var(--mono);
+    font-size: clamp(0.7rem, 0.85vw + 0.3rem, 0.85rem);
+    line-height: 1.5;
+    color: var(--ink);
+    white-space: pre;
+  }
+  .ascii-frame .a-rust { color: var(--rust); font-weight: 500; }
+  .ascii-frame .a-moss { color: var(--moss); font-weight: 500; }
+  .ascii-frame .a-mute { color: var(--ink-fade); }
+
+  /* ── CLOSING ──────────────────────────────────────────── */
+  .closing {
+    border-top: 1px solid var(--rule);
+    padding: clamp(80px, 12vh, 140px) 0 clamp(40px, 6vh, 80px);
+    margin-top: clamp(64px, 10vh, 120px);
+  }
+  .closing-quote {
+    font-family: var(--serif);
+    font-size: clamp(1.6rem, 3vw, 2.6rem);
+    font-weight: 350; line-height: 1.3;
+    letter-spacing: -0.01em;
+    max-width: 32ch;
+    font-variation-settings: "opsz" 72;
+  }
+  .closing-quote em {
+    color: var(--rust);
+    font-variation-settings: "opsz" 72, "SOFT" 80;
+  }
+  .footer {
+    margin-top: clamp(60px, 10vh, 120px);
+    padding-top: 32px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--ink-fade);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .footer a { color: var(--rust); text-decoration: none; }
+  .footer a:hover { color: var(--rust-deep); text-decoration: underline; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .masthead h1, .masthead .lede, .masthead-meta {
+    animation: rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .masthead-meta { animation-delay: 0s; }
+  .masthead h1   { animation-delay: 0.1s; }
+  .masthead .lede { animation-delay: 0.3s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<!-- ─────────── MASTHEAD ─────────── -->
+<header class="masthead">
+  <div class="masthead-meta">
+    <span><b>esp-harness</b> · 沉淀汇报 · monorepo</span>
+    <span>v1.5.0 · 2026·05·21</span>
+  </div>
+  <h1>两个仓<br><span class="amp">合并成</span><span class="accent">一个</span></h1>
+  <p class="lede">
+    继 v1.4 收口后, v1.5 完成<span class="pivot">仓库结构重构</span> — 原本两个仓
+    (<span class="num">esp32-harness-showcase</span> + <span class="num">esp32-harness-toolkit</span>) 合并成单一 monorepo
+    <span class="num">esp-harness</span>, 顶层按 artifact 类型切: components / tools / examples / sim-base / boards / docs.
+    新 <span class="num">esp-harness new</span> 命令带三种 vendoring 模式 (vendor 默认自包含 / link sibling / depend registry),
+    根 README 走三路 onboarding 分叉, 整合 CI 单 checkout. <span class="num">17</span> toolkit / <span class="num">20</span> scene / <span class="num">13</span> sim scene.
+  </p>
+</header>
+
+<!-- ─────────── 01 At a glance ─────────── -->
+<section>
+  <div class="section-num">§ 01 — At a glance</div>
+  <h2>已经不是一个仓库<br>而是<em>三层可复用结构</em></h2>
+
+  <p class="glance">
+    跨 <span class="n">2</span> 仓 <span class="n">30+</span> 次 commit, 落 <span class="n">5</span> 个 git tag (v1.0 → v1.4); aurora-harness 公共 API <span class="n">30+</span> 函数 / 6 个头文件; 全部由 manifest --json 一行可见 + 每层都有 onboarding 文档。
+  </p>
+
+  <div class="glance-grid">
+    <div class="glance-cell">
+      <div class="big rust">16</div>
+      <div class="label">Toolkit 命令</div>
+      <div class="sub">含新 <code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">doctor</code> 环境健康检查, <code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">test</code> pytest 集成测试入口</div>
+    </div>
+    <div class="glance-cell">
+      <div class="big rust">20</div>
+      <div class="label">Scenes 总数</div>
+      <div class="sub">+ XX Track (harness_progress 参考). XIX/XX 都是 toast/progress 原语的 demo scene</div>
+    </div>
+    <div class="glance-cell">
+      <div class="big rust">13 / 13</div>
+      <div class="label">Sim diff PASS</div>
+      <div class="sub">含 Track; 13 个 host-runnable scene 全部稳定 < 1% diff (Pulse 5% 容差)</div>
+    </div>
+    <div class="glance-cell">
+      <div class="big moss">3 / 3</div>
+      <div class="label">Integration tests</div>
+      <div class="sub"><code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">esp-harness test</code> 跑 pytest: doctor + manifest + sim diff. 10s</div>
+    </div>
+    <div class="glance-cell">
+      <div class="big">BSP</div>
+      <div class="label">组件已板无关</div>
+      <div class="sub"><code style="font-family:var(--mono);font-size:0.85em;background:var(--paper-2);padding:1px 4px">harness/bsp_iface.h</code> 只 2 个符号 (lock/unlock), PORTING.md 多板清单</div>
+    </div>
+    <div class="glance-cell">
+      <div class="big moss">8 / 8</div>
+      <div class="label">Doctor checks</div>
+      <div class="sub">ESP-IDF / cmake / Pillow / pyserial / mingw / SDL2 / 串口 / sibling repo — 全 OK</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── 02 SCAFFOLD CALLOUT ─────────── -->
+<section class="scaffold">
+  <div class="section-num" style="color: #c7e0a4">§ 02 — Scaffold mindset</div>
+  <h2>每个能力<br>都是<em>独立可复用</em>的积木</h2>
+
+  <div class="scaffold-body">
+    <p>本轮最关键的不是"做了什么"而是"<b>怎么做</b>"。每一个新 feature
+    都按"可复用积木 + 集成文档"的标准产出: <code>aurora-harness</code>
+    是 LEGO 底板, <code>harness_toast()</code> 是新积木块, Scene XIX
+    Notify 是参考拼装, INTEGRATION.md 是说明书。一个新项目复用这套,
+    跟 Aurora 自己用是一样的接口。</p>
+    <p style="margin-top: 18px;">具体做法: 任何"任何 LVGL+console
+    项目都该有"的能力 — 协议、scene framework、toast、<code>?stat</code>
+    — 都进了 aurora-harness 组件。Aurora-specific 的 (<code>?audio</code>,
+    <code>?sd</code>, <code>?wifi</code> 等) 留在 main/ 作为应用胶水。
+    这条线划清楚, 才能让"新人项目"和"Aurora 自己"用同一份核心。</p>
+  </div>
+</section>
+
+<!-- ─────────── 03 ARCHITECTURE ─────────── -->
+<section>
+  <div class="section-num">§ 03 — 架构 (v1.3)</div>
+  <h2>三层都在<br><em>同一个 manifest</em> 之下</h2>
+
+  <div class="ascii-frame">
+<pre>
+                <span class="a-rust">┌─── esp-harness manifest --json ───┐</span>
+                <span class="a-rust">│   一条命令枚举所有能力             │</span>
+                <span class="a-rust">└────────────────┬───────────────────┘</span>
+                                 │
+        ┌────────────────────────┼────────────────────────┐
+        ▼                        ▼                        ▼
+  <span class="a-moss">┌──────────────┐         ┌──────────────┐        ┌──────────────┐</span>
+  <span class="a-moss">│   TOOLKIT    │</span>         <span class="a-moss">│   FIRMWARE   │</span>        <span class="a-moss">│  SIMULATOR   │</span>
+  <span class="a-moss">│              │</span>         <span class="a-moss">│              │</span>        <span class="a-moss">│              │</span>
+  <span class="a-moss">│  Python CLI  │</span>         <span class="a-moss">│  ESP-IDF v6  │</span>        <span class="a-moss">│   SDL2 host  │</span>
+  <span class="a-moss">└──────┬───────┘</span>         <span class="a-moss">└──────┬───────┘</span>        <span class="a-moss">└──────┬───────┘</span>
+         │                      │                        │
+         │ 14 cmds              │ 19 scenes              │ 12 scenes
+         │ + init 模板          │ + ?ota partition       │ + record 多帧
+         │ + sim diff/record    │ + harness_toast 浮层   │ + diff vs golden
+         │ + console --repl     │ + scene_t description  │ + CI ubuntu
+         │ + manifest           │ + ?stat fps/heap       │
+         │                      │                        │
+         │                      <span class="a-rust">▼</span>                        <span class="a-rust">▼</span>
+         │            <span class="a-rust">┌────────────────────────────────┐</span>
+         │            <span class="a-rust">│  components/aurora-harness/   │</span>
+         │            <span class="a-rust">│   ↳ 可复用 ESP-IDF 组件         │</span>
+         │            <span class="a-rust">│     console_protocol           │</span>
+         │            <span class="a-rust">│     scene_framework            │</span>
+         │            <span class="a-rust">│     toast 浮层                  │</span>
+         │            <span class="a-rust">│     default_cmds (?stat)       │</span>
+         │            <span class="a-rust">└────────────────────────────────┘</span>
+         │                       <span class="a-mute">↑ firmware 和 sim 都依赖它</span>
+         │
+         ▼
+  <span class="a-mute">build / flash / monitor / run</span>
+  <span class="a-mute">manifest / bench / backtrace</span>
+  <span class="a-mute">screenshot / console / audio / tap</span>
+  <span class="a-mute">sim {snapshot, diff, update-golden, record}</span>
+  <span class="a-mute">init &lt;new-project&gt;</span>
+
+   <span class="a-rust">─────────────  Discovery surface 双向连通  ─────────────</span>
+
+  AI 改源码 → <span class="a-moss">sim diff</span> 5s (sim) / <span class="a-moss">sim record</span> 看动画
+  AI 改源码 → <span class="a-moss">build + flash + run</span> 30s (设备 e2e)
+  AI 改源码 → <span class="a-moss">bench --compare</span> 8s (跨版本性能回归)
+  AI 起新项目 → <span class="a-moss">esp-harness init</span> 1 行 (scaffold)
+  AI 调试设备 → <span class="a-moss">console --repl</span> 交互
+</pre>
+  </div>
+</section>
+
+<!-- ─────────── 04 PHASES TIMELINE ─────────── -->
+<section>
+  <div class="section-num">§ 04 — 全 6 阶段实施</div>
+  <h2>每阶段一个<br>明确的 <em>能力跃迁</em></h2>
+
+  <!-- ARC A -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">A</div>
+      <div class="arc-meta"><b>v1 收口</b><br>4 tasks · 30 min<br>tag v1.0.0</div>
+    </div>
+    <div>
+      <div class="arc-title">先打个 v1.0 钉子, 才能在它之上换地基</div>
+      <div class="arc-body">
+        <p>scenes-map XIV-XVI, boot flicker (NVS-restore 挪到 LVGL unlock 前), CHANGELOG ×2 仓, v1.0.0 tag 双仓 push.</p>
+        <p class="arc-quote">不可逆改动前必先 tag — sim/ 引入 host build 重构是不可逆变更, v1.0 是它的安全网。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC B -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">B</div>
+      <div class="arc-meta"><b>Bench 基线</b><br>3 tasks · 45 min</div>
+    </div>
+    <div>
+      <div class="arc-title">让"性能退步"变成 exit code</div>
+      <div class="arc-body">
+        <p>bench.py 加 --baseline/--compare, 8 个 metric 方向性阈值表。data/baseline.json 落地 v1.0 实测基线, AGENT.md §6.5 文档化。</p>
+        <p class="arc-quote">方向性阈值 — heap 跌报警, 涨多少都不报; loopback 涨报警, 跌不报。对称阈值会被正常方差淹没。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC C -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">C</div>
+      <div class="arc-meta"><b>WiFi/BLE/OTA</b><br>3 tasks · 1.5 hr<br>tag v1.1.0</div>
+    </div>
+    <div>
+      <div class="arc-title">同样的硬件, 两套表达</div>
+      <div class="arc-body">
+        <p>Scene XVII Survey (WiFi 数据表) + XVIII Sniff (BLE 数据表) — 与 IX Spectrum / VIII Whisper 共享同一外设, 两种视觉风格 (艺术 vs 表格)。 <code>?ota info/mark-valid/rollback</code> partition state 读取。修 MAX_SCENES silent drop bug。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC D -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">D</div>
+      <div class="arc-meta"><b>LVGL Simulator</b><br>2.5 hr<br>端到端通</div>
+    </div>
+    <div>
+      <div class="arc-title">scaffold → 跑通 → toolkit 驱动 — 三段串好</div>
+      <div class="arc-body">
+        <p>用户态 scoop 装 MinGW gcc 16.1 + 手动解压 SDL2 dev libs (无 admin), 跑通 466×466 LVGL 窗口。补 headless 模式 <code>--scene N --snapshot PATH</code>, toolkit <code>sim snapshot</code> 一键调用。</p>
+        <p class="arc-quote">三层独立验证 — GUI 模式跑通, 再 headless 模式跑通, 再 toolkit 调用跑通。一锅炖出错没办法定位。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC F — Scaffold promotion -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">F</div>
+      <div class="arc-meta"><b>组件化</b><br>4 tasks · 1.5 hr<br>tag v1.2.0</div>
+    </div>
+    <div>
+      <div class="arc-title">把 console_protocol + scene_framework<br>提升为 <em>aurora-harness 组件</em></div>
+      <div class="arc-body">
+        <p>git mv 4 个文件保留历史, 20 个调用方 sed 改 <code>#include "harness/X.h"</code> 命名空间形式。 main 改 REQUIRES 取代 SRCS, sim CMakeLists 指向组件路径直接编译。</p>
+        <p>配套文档: <b>组件 README 350 行</b> (API 契约 / 集成 / 线程模型 / 限制), <b>sim/INTEGRATION.md</b> (新项目复用 sim 的清单), 顶层 README 改写 "Aurora 是三合一"。</p>
+        <p class="arc-quote">分界线: 任何 LVGL+console 项目都该有的能力 → 组件; peripheral-coupled 的 → 应用胶水留 main/。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC G — 10 iterations -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">G</div>
+      <div class="arc-meta"><b>10 轮迭代</b><br>10 tasks · 5 hr<br>tag v1.3.0</div>
+    </div>
+    <div>
+      <div class="arc-title">每个迭代一个新积木 + 文档</div>
+      <div class="arc-body">
+        <ul class="arc-deliverables">
+          <li><span class="check">✓</span><span><b>G1</b> <code>?stat</code> 上提进 aurora-harness 作为 <code>harness_default_register()</code> 入口</span><span class="commit">2d21b33</span></li>
+          <li><span class="check">✓</span><span><b>G2</b> <code>harness_toast()</code> 任意 task 安全的浮层原语</span><span class="commit">8334d7e</span></li>
+          <li><span class="check">✓</span><span><b>G3</b> Scene XIX Notify — toast 参考实现</span><span class="commit">8334d7e</span></li>
+          <li><span class="check">✓</span><span><b>G4</b> GitHub Actions CI workflow + sim CMakeLists 跨平台修</span><span class="commit">1d4c30f</span></li>
+          <li><span class="check">✓</span><span><b>G5</b> <code>esp-harness init &lt;name&gt;</code> 项目模板生成器 (9 文件)</span><span class="commit">04243f9</span></li>
+          <li><span class="check">✓</span><span><b>G6</b> <code>sim record</code> 动画多帧捕获</span><span class="commit">04243f9</span></li>
+          <li><span class="check">✓</span><span><b>G7</b> <code>console --repl</code> 交互式 + 斜杠命令</span><span class="commit">04243f9</span></li>
+          <li><span class="check">✓</span><span><b>G8</b> showcase <code>AGENT.md</code> — 给后续 AI 的上手手册</span><span class="commit">6c3a8c5</span></li>
+          <li><span class="check">✓</span><span><b>G9</b> scene_t 加 <code>description</code> + <code>tags</code> 元数据</span><span class="commit">6c3a8c5</span></li>
+          <li><span class="check">✓</span><span><b>G10</b> 本汇报 HTML v2 → 入库到 <code>docs/harness-report.html</code></span><span class="commit">b35fbb7</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC H — completion sweep -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">H</div>
+      <div class="arc-meta"><b>脚手架收口</b><br>10 tasks · 6 hr<br>tag v1.4.0</div>
+    </div>
+    <div>
+      <div class="arc-title">把还卡在应用层的<br>通用能力<em>全部</em>上提</div>
+      <div class="arc-body">
+        <p>v1.3 把核心抽出为组件; v1.4 把<i>其余</i>通用部分也送进去,
+        让 main/ 真正只剩 Aurora-specific 胶水。组件同时去掉对单一
+        BSP 的硬绑定, 加上多板移植清单。</p>
+        <ul class="arc-deliverables">
+          <li><span class="check">✓</span><span><b>H1</b> <code>cmd_scene</code> 上提 + <code>scene_change_listener</code> 解耦 chrome</span><span class="commit">c192562</span></li>
+          <li><span class="check">✓</span><span><b>H2</b> <code>cmd_tap</code> + <code>cmd_swipe</code> 上提 (纯 LVGL indev)</span><span class="commit">e60ae2c</span></li>
+          <li><span class="check">✓</span><span><b>H3</b> <code>cmd_dump</code> + PSRAM 截屏机制整段挪到 <code>screenshot.c</code></span><span class="commit">725826f</span></li>
+          <li><span class="check">✓</span><span><b>H4</b> <code>bsp_iface.h</code> 抽象 + 解 Waveshare 硬绑定 + PORTING.md</span><span class="commit">39c73d4</span></li>
+          <li><span class="check">✓</span><span><b>H5</b> <code>harness_progress()</code> 进度条原语 + Scene XX Track 示范</span><span class="commit">5258f73</span></li>
+          <li><span class="check">✓</span><span><b>H6</b> <code>harness_default_register()</code> 注册全套 (stat / scene / tap / swipe / ?dump) + 文档收口</span><span class="commit">5258f73</span></li>
+          <li><span class="check">✓</span><span><b>H7</b> <code>esp-harness doctor</code> — 8 项依赖健康检查</span><span class="commit">24de11a</span></li>
+          <li><span class="check">✓</span><span><b>H8</b> <code>esp-harness test</code> + pytest 集成测试套 (3 tests, 10s)</span><span class="commit">24de11a</span></li>
+          <li><span class="check">✓</span><span><b>H9</b> idf_component.yml v1.4.0 registry 准备 + RELEASING.md</span><span class="commit">0150546</span></li>
+          <li><span class="check">✓</span><span><b>H10</b> 汇报 HTML v3 → <code>docs/harness-report.html</code> + v1.4.0 tag</span><span class="commit">70275d8</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARC I — monorepo migration -->
+  <div class="arc">
+    <div>
+      <div class="arc-label">I</div>
+      <div class="arc-meta"><b>monorepo 落地</b><br>10 tasks · 4 hr<br>tag v1.5.0 (本汇报)</div>
+    </div>
+    <div>
+      <div class="arc-title">从两仓<br>到 <em>esp-harness</em> 单仓</div>
+      <div class="arc-body">
+        <p>用户提议把分散在两个仓库的内容合并成单一 esp-harness, 按
+        artifact 类型而非功能模块切顶层。新结构让"库 / 工具 / 演示
+        / 模板"四类东西物理边界跟语义边界完全对齐, 各自独立, 各自
+        可发布。</p>
+        <ul class="arc-deliverables">
+          <li><span class="check">✓</span><span><b>I1</b> 新仓骨架 — components / tools / examples / sim-base / boards / docs / .github</span><span class="commit">初始化</span></li>
+          <li><span class="check">✓</span><span><b>I2</b> 搬 <code>aurora-harness</code> 组件 + Waveshare BSP 进 <code>boards/</code></span><span class="commit">cp -r</span></li>
+          <li><span class="check">✓</span><span><b>I3</b> 搬 toolkit 进 <code>tools/esp-harness/</code></span><span class="commit">含 tests/</span></li>
+          <li><span class="check">✓</span><span><b>I4</b> 搬 Aurora demo 进 <code>examples/aurora/</code></span><span class="commit">含 sim/</span></li>
+          <li><span class="check">✓</span><span><b>I5</b> 抽 <code>sim-base/</code> — ESP-IDF stub + mock_bsp + INTEGRATION.md 上提</span><span class="commit">真模板化</span></li>
+          <li><span class="check">✓</span><span><b>I6</b> 改全部路径引用 — sim CMakeLists / conftest / doctor / sim auto-detect / GHA workflow</span><span class="commit">14 处</span></li>
+          <li><span class="check">✓</span><span><b>I7</b> 根 <code>README.md</code> 三路 onboarding + <code>AGENT.md</code> + <code>docs/architecture.md</code> + <code>docs/getting-started.md</code></span><span class="commit">~1200 行</span></li>
+          <li><span class="check">✓</span><span><b>I8</b> <code>esp-harness new</code> 重设计 — vendor/link/depend 三模式, 生成 AGENT.md</span><span class="commit">init 保留作 alias</span></li>
+          <li><span class="check">✓</span><span><b>I9</b> 端到端验证 — target build 13.8s / sim build / sim diff 13/13 / pytest 3/3 / manifest 17 cmds / new smoke</span><span class="commit">全过</span></li>
+          <li><span class="check">✓</span><span><b>I10</b> 单一 initial commit + v1.5.0 tag + 本汇报 HTML v4</span><span class="commit">本提交</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── 05 API SURFACE ─────────── -->
+<section>
+  <div class="section-num">§ 05 — aurora-harness 公共 API</div>
+  <h2>组件能给一个<br>新项目<em>什么</em></h2>
+
+  <p style="max-width:60ch;margin-bottom:24px;color:var(--ink-mute);">
+    完整的 30+ 函数 / 类型. 公共头位于 <code style="font-family:var(--mono);background:var(--paper-2);padding:1px 4px">components/aurora-harness/include/harness/</code>. 任何 ESP-IDF + LVGL 项目 vendor 此组件即用。
+  </p>
+
+  <div class="two-col">
+    <div class="api-block">
+      <div class="head">harness/console_protocol.h</div>
+      <dl>
+        <dt>console_protocol_init()</dt>
+        <dd>启动 serial 解析 task + 注册 ?ping/?reset/?help (含 ?help json)</dd>
+        <dt>console_protocol_register(&amp;cmd)</dt>
+        <dd>注册一个 console_cmd_t. 静态存储, 程序生命周期内有效</dd>
+        <dt>console_reply_ok(fmt, ...)<br>console_reply_err(fmt, ...)</dt>
+        <dd>从 handler 内回复. printf 风格格式串</dd>
+        <dt>console_send_evt(fmt, ...)</dt>
+        <dd>主动 EVT 行 (异步事件, 不响应命令)</dd>
+        <dt>console_begin_payload(TAG, meta)<br>console_write_raw(buf, n)<br>console_end_payload(TAG)</dt>
+        <dd>多行 payload 帧 (JSON dump / 截图 base64 等), &lt;TAG&gt;_BEGIN / &lt;TAG&gt;_END 包裹</dd>
+      </dl>
+    </div>
+
+    <div class="api-block">
+      <div class="head">harness/scene_framework.h</div>
+      <dl>
+        <dt>scene_t (struct)</dt>
+        <dd>id / display_name / accent / description / tags / 6 个 lifecycle 钩子 (init / on_show / on_hide / frame / on_tilt / on_long_press / on_release) / user_data</dd>
+        <dt>scene_fw_init(root_obj)</dt>
+        <dd>挂载框架到根 LVGL 对象 + 启 33ms frame timer</dd>
+        <dt>scene_fw_register(&amp;scene)</dt>
+        <dd>注册一个 scene. 上限 24, 满了打 ESP_LOGE</dd>
+        <dt>scene_fw_show(idx) / next() / prev()</dt>
+        <dd>切换场景, 280ms 淡入淡出</dd>
+        <dt>scene_fw_push_tilt(ax, ay, az)</dt>
+        <dd>把 IMU 读数喂给当前场景 (其它 scene 不打扰)</dd>
+        <dt>scene_fw_count / current_index / current / get(i)</dt>
+        <dd>introspection</dd>
+      </dl>
+    </div>
+
+    <div class="api-block">
+      <div class="head">harness/toast.h</div>
+      <dl>
+        <dt>harness_toast(text, ms)</dt>
+        <dd>浮层提示, 任意 task 安全 (lv_async_call 派遣). 默认 1500ms. 新调用替换旧 toast.</dd>
+        <dt>harness_toast_dismiss()</dt>
+        <dd>立即清掉. 用于 scene on_hide 礼貌清理</dd>
+      </dl>
+    </div>
+
+    <div class="api-block">
+      <div class="head">harness/progress.h <span style="font-family:var(--serif);font-style:italic;color:var(--rust);font-size:0.9em">— new in v1.4</span></div>
+      <dl>
+        <dt>harness_progress_show(text, percent)</dt>
+        <dd>浮层进度条 (label + bar). 首次调用创建, 后续 in-place 更新. 任意 task 安全.</dd>
+        <dt>harness_progress_dismiss()</dt>
+        <dd>显式收掉. 与 toast 不同, progress 没有自动 expire — 显式生命周期</dd>
+      </dl>
+    </div>
+
+    <div class="api-block">
+      <div class="head">harness/default_cmds.h <span style="font-family:var(--serif);font-style:italic;color:var(--rust);font-size:0.9em">— expanded v1.4</span></div>
+      <dl>
+        <dt>harness_default_register()</dt>
+        <dd>opt-in 注册全套默认命令: <code>?stat</code> / <code>scene</code> / <code>tap</code> / <code>swipe</code> / <code>?dump</code>. 一行覆盖所有 LVGL+console 项目应有的基础.</dd>
+        <dt>harness_record_frame()</dt>
+        <dd>每帧调一次喂 ?stat 的 fps 字段</dd>
+      </dl>
+    </div>
+
+    <div class="api-block">
+      <div class="head">harness/screenshot.h <span style="font-family:var(--serif);font-style:italic;color:var(--rust);font-size:0.9em">— new in v1.4</span></div>
+      <dl>
+        <dt>harness_screenshot_register()</dt>
+        <dd>注册 <code>?dump</code> 命令 — LVGL 截屏 + 顶层合成 + 下采样 + base64. PSRAM 持久缓冲. harness_default_register 已自动调.</dd>
+      </dl>
+    </div>
+
+    <div class="api-block">
+      <div class="head">harness/bsp_iface.h <span style="font-family:var(--serif);font-style:italic;color:var(--rust);font-size:0.9em">— new in v1.4</span></div>
+      <dl>
+        <dt>bsp_display_lock(timeout_ms) → bool<br>bsp_display_unlock()</dt>
+        <dd>组件依赖的<i>全部</i> BSP 符号。任何 Espressif-style BSP 自带; 自定义板提供同名实现即可。多板移植清单见 PORTING.md.</dd>
+      </dl>
+    </div>
+
+    <div class="api-block">
+      <div class="head">scene_fw_set_change_listener <span style="font-family:var(--serif);font-style:italic;color:var(--rust);font-size:0.9em">— new in v1.4</span></div>
+      <dl>
+        <dt>scene_fw_set_change_listener(cb)</dt>
+        <dd>注册一个 <code>void (int idx, const scene_t *)</code> 回调, 每次 scene_fw_show 完成后触发. 应用用它来同步 UI chrome (ui_shell 等), 让 cmd_scene 不必硬依赖应用层 widgets.</dd>
+        <dt>scene_fw_find_by_id(id) → int</dt>
+        <dd>按 scene id 字符串线性查找索引 (-1 = not found). cmd_scene 用于 <code>scene halo</code> 这种按名切换.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── 06 NEW SCENE: NOTIFY ─────────── -->
+<section>
+  <div class="section-num">§ 06 — 本轮新增 scene</div>
+  <h2>XIX Notify —<br>toast 原语的<em>参考实现</em></h2>
+
+  <p style="max-width:60ch;margin-bottom:24px;color:var(--ink-mute);">
+    每个新原语都该有一个最小可见示范, 让"怎么用"变成"复制粘贴"。
+    Notify 就是 <code style="font-family:var(--mono);background:var(--paper-2);padding:1px 4px">harness_toast()</code> 的 demo。
+    BOOT 循环 5 种 toast (1.5s 默认), USER 触发 3s 长 toast, 计数器跟踪触发次数,
+    on_hide 时主动 dismiss 防 toast 跨 scene 漏出。
+  </p>
+
+  <div style="margin-top:24px; display:flex; gap:24px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:200px; border:1px solid var(--rule); padding:18px; background:var(--paper-2);">
+      <div style="font-family:var(--mono); font-size:0.7rem; color:var(--rust); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px">id</div>
+      <div style="font-family:var(--mono); font-size:0.95rem">notify</div>
+    </div>
+    <div style="flex:1; min-width:200px; border:1px solid var(--rule); padding:18px; background:var(--paper-2);">
+      <div style="font-family:var(--mono); font-size:0.7rem; color:var(--rust); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px">tags</div>
+      <div style="font-family:var(--mono); font-size:0.95rem">demo,toast,reference</div>
+    </div>
+    <div style="flex:2; min-width:280px; border:1px solid var(--rule); padding:18px; background:var(--paper-2);">
+      <div style="font-family:var(--mono); font-size:0.7rem; color:var(--rust); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px">description (manifest)</div>
+      <div style="font-family:var(--serif); font-size:1rem; font-variation-settings:'opsz' 18">Reference demo for harness_toast(); BOOT cycles 5 variants, USER long-holds</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────── 07 ROADMAP ─────────── -->
+<section>
+  <div class="section-num">§ 07 — 路线图状态</div>
+  <h2>第一档<em>清空</em>,<br>下一档要解前置依赖</h2>
+
+  <h3 style="font-family:var(--mono); font-size:0.78rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--moss); margin:32px 0 12px;">已完成 (v1.2/v1.3)</h3>
+
+  <div class="roadmap-row">
+    <div class="pri">★★★</div>
+    <div class="effort">2 hr</div>
+    <div>
+      <div class="title done">Golden BMP diff + CI</div>
+      <div class="desc">sim diff + update-golden, per-scene thresholds, GitHub Actions ubuntu workflow.</div>
+    </div>
+    <div class="gate done">DONE</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★★</div>
+    <div class="effort">1.5 hr</div>
+    <div>
+      <div class="title done">Sim 接更多 scene</div>
+      <div class="desc">11 → 12 scene 可 host 跑 (Halo / Grid / Bloom / Tilt / Pulse / Cell / Keys / Tone / System / Glow / Spin / Notify).</div>
+    </div>
+    <div class="gate done">DONE</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★</div>
+    <div class="effort">30 min</div>
+    <div>
+      <div class="title done">scene &lt;id&gt; 切换</div>
+      <div class="desc"><code>scene halo</code> / <code>scene survey</code> 直接生效。顺手修 bsp_display_lock(0) 死锁.</div>
+    </div>
+    <div class="gate done">DONE</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★★</div>
+    <div class="effort">2 hr</div>
+    <div>
+      <div class="title done">aurora-harness 组件化</div>
+      <div class="desc">console_protocol + scene_framework + toast + default_cmds 提进 ESP-IDF 组件, 完整 README + idf_component.yml.</div>
+    </div>
+    <div class="gate done">DONE</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★</div>
+    <div class="effort">1 hr</div>
+    <div>
+      <div class="title done">esp-harness init 模板生成器</div>
+      <div class="desc"><code>esp-harness init &lt;name&gt;</code> 9 文件起一个新项目骨架, 直接 build/flash 跑得起来.</div>
+    </div>
+    <div class="gate done">DONE</div>
+  </div>
+
+  <h3 style="font-family:var(--mono); font-size:0.78rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--gold); margin:48px 0 12px;">下一档 (中期, 需前置)</h3>
+
+  <div class="roadmap-row">
+    <div class="pri">★★</div>
+    <div class="effort">4 hr</div>
+    <div>
+      <div class="title">真实 OTA over HTTPS</div>
+      <div class="desc">前置: 改 partitions.csv 引入 ota_data + 两槽; WiFi 凭证持久化 (NVS + 一次性配网 UI). 当前 ?ota 已有 mark-valid/rollback 框架, 只差下载.</div>
+    </div>
+    <div class="gate blocked">需配网</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★</div>
+    <div class="effort">3 hr</div>
+    <div>
+      <div class="title">WiFi 一次性配网 (NimBLE peripheral)</div>
+      <div class="desc">前置: 现在 NimBLE 只 observer 模式. 加 peripheral GATT 接收 SSID/PASS → NVS 私密 namespace.</div>
+    </div>
+    <div class="gate blocked">前置</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★</div>
+    <div class="effort">2 hr</div>
+    <div>
+      <div class="title done">cmd_scene / cmd_tap / swipe / cmd_dump 全部上提</div>
+      <div class="desc">H1-H3 完成. scene_change_listener 钩子解 ui_shell 耦合; screenshot.c 独立成模块. harness_default_register 一行注册全套.</div>
+    </div>
+    <div class="gate done">DONE v1.4</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★</div>
+    <div class="effort">1 hr</div>
+    <div>
+      <div class="title done">aurora-harness 解 BSP 硬绑定 + 多板清单</div>
+      <div class="desc">H4 完成. 组件依赖收缩到 bsp_iface.h 的两个符号 (lock/unlock), PORTING.md 8 步检核表.</div>
+    </div>
+    <div class="gate done">DONE v1.4</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★★</div>
+    <div class="effort">1 hr</div>
+    <div>
+      <div class="title done">harness_progress() 进度条原语 + Scene XX Track</div>
+      <div class="desc">H5 完成. lv_layer_top 浮层 label+bar, 与 toast 对称的显式生命周期 API. Track 是 5s 下载模拟示范.</div>
+    </div>
+    <div class="gate done">DONE v1.4</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★</div>
+    <div class="effort">2 hr</div>
+    <div>
+      <div class="title done">esp-harness doctor + test (pytest integration)</div>
+      <div class="desc">H7-H8 完成. doctor 8 项依赖, test 跑 pytest 3 个 integration test 含 sim diff 回归. esp-harness test 入口.</div>
+    </div>
+    <div class="gate done">DONE v1.4</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★</div>
+    <div class="effort">1 hr</div>
+    <div>
+      <div class="title done">idf_component.yml registry 准备 + RELEASING.md</div>
+      <div class="desc">H9 完成. 元数据 + tags + targets + files.exclude. compote upload 步骤 + semver 规则 + 不删 API 政策都写入 RELEASING.md. 实际 upload 留给最终决定要发布的时刻.</div>
+    </div>
+    <div class="gate done">DONE v1.4</div>
+  </div>
+
+  <h3 style="font-family:var(--mono); font-size:0.78rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-fade); margin:48px 0 12px;">长期 / 探索</h3>
+
+  <div class="roadmap-row">
+    <div class="pri">★</div>
+    <div class="effort">8+ hr</div>
+    <div>
+      <div class="title">把别的板子接进来</div>
+      <div class="desc">现在只跑过 Waveshare ESP32-S3-Touch-AMOLED-2.16. 接 ESP32-C6 / S3-WROOM / 其他屏, 验证 BSP 抽象是否真可移植.</div>
+    </div>
+    <div class="gate future">future</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★</div>
+    <div class="effort">12+ hr</div>
+    <div>
+      <div class="title">Webcam 真实视觉回环</div>
+      <div class="desc">USB 摄像头对真屏拍, 截图反喂 LLM 做"AI 真的看见了" 闭环. 比 ?dump 更接近用户视角.</div>
+    </div>
+    <div class="gate future">future</div>
+  </div>
+  <div class="roadmap-row">
+    <div class="pri">★</div>
+    <div class="effort">unknown</div>
+    <div>
+      <div class="title">把 aurora-harness 发布到 IDF Component Registry</div>
+      <div class="desc">现在用 EXTRA_COMPONENT_DIRS 路径依赖. 发布后任何项目 idf_component.yml 一行就能引入.</div>
+    </div>
+    <div class="gate future">future</div>
+  </div>
+</section>
+
+<!-- ─────────── 08 CLOSING ─────────── -->
+<section class="closing">
+  <div class="section-num">§ 08 — 收尾</div>
+  <p class="closing-quote">
+    v1.4 之后, 想用这套<br>开个新 ESP-IDF + LVGL 项目<br>是<em>一条命令</em> —<br><br><code style="font-family:var(--mono);font-size:0.55em;color:var(--ink);background:var(--paper-2);padding:4px 10px;border-radius:4px">esp-harness init my-thing</code>
+  </p>
+
+  <div class="footer">
+    <span>monorepo: <a href="https://github.com/Caldis/esp-harness">Caldis/esp-harness</a> v1.5.0</span>
+    <span>archived: <a href="https://github.com/Caldis/esp32-harness-showcase">esp32-harness-showcase</a> v1.4.0 · <a href="https://github.com/Caldis/esp32-harness-toolkit">esp32-harness-toolkit</a> v1.0.0</span>
+  </div>
+</section>
+
+</div>
+
+</body>
+</html>

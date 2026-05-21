@@ -1,0 +1,59 @@
+{
+  "port": "COM9",
+  "quick": false,
+  "started_at_unix": 1779116806.1812978,
+  "device": {
+    "app_name": "aurora",
+    "app_version": "643b6fb-dirty",
+    "idf": "v6.0.1",
+    "elf_sha": "74de73e13bb4b0",
+    "reset_reason": "SW_RESET"
+  },
+  "stat": {
+    "fps": 60.0,
+    "heap_free": 6892076,
+    "heap_min": 6886068,
+    "psram_free": 6884260,
+    "int_free": 11455,
+    "int_largest": 7680,
+    "uptime_ms": 217695,
+    "scene_count": 16
+  },
+  "power": {
+    "ready": true,
+    "vbus": true,
+    "battery": true,
+    "charge": "done",
+    "percent": 100,
+    "voltage_mv": 4141,
+    "vbus_mv": 5021,
+    "rate_pct_per_min": 0.0,
+    "rate_mv_per_min": 0.0
+  },
+  "audio_loopback": {
+    "requested_ms": 500,
+    "elapsed_ms": 1076,
+    "peak_dbfs": 0.0,
+    "rms_dbfs": -24.5
+  },
+  "sensor_noise": {
+    "samples": 5,
+    "mean_g": [
+      0.003,
+      -0.0008,
+      -0.0014
+    ],
+    "max_dev_g": 0.0012000000000000001
+  },
+  "ble_scan": {
+    "elapsed_ms": 2008,
+    "device_count": 8,
+    "adv_events": 328
+  },
+  "sd_bench": {
+    "mb": 1,
+    "write_kbps": 305,
+    "read_kbps": 1450
+  },
+  "elapsed_ms": 8448
+}

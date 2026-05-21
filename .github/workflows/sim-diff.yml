@@ -1,0 +1,95 @@
+# Visual regression on every push / PR (monorepo v1.5+).
+#
+# Builds the Aurora sim on Ubuntu, runs `esp-harness sim diff` against the
+# committed golden BMPs. A real UI regression makes this job fail.
+# Intentional UI changes are absorbed by committing refreshed BMPs from
+# `esp-harness sim update-golden` alongside the source change — see
+# examples/aurora/sim/golden/README.md.
+#
+# Notes:
+#   - LVGL ref: release/v9.4 (matches managed_components on target side).
+#   - SDL2 from apt — Ubuntu's sdl2-config.cmake is relocatable (unlike
+#     the upstream Windows dev tarball), so find_package works as-is.
+#   - Pillow is the only Python dep of esp-harness sim diff.
+#   - Monorepo: one checkout, both toolkit and sim source live in-tree.
+
+name: sim diff
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "components/aurora-harness/**"
+      - "sim-base/**"
+      - "examples/aurora/**"
+      - "tools/esp-harness/**"
+      - ".github/workflows/sim-diff.yml"
+  pull_request:
+    paths:
+      - "components/aurora-harness/**"
+      - "sim-base/**"
+      - "examples/aurora/**"
+      - "tools/esp-harness/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              cmake build-essential libsdl2-dev
+
+      - name: Fetch LVGL (9.4)
+        run: |
+          git clone --depth 1 --branch release/v9.4 \
+              https://github.com/lvgl/lvgl /tmp/lvgl
+          test -f /tmp/lvgl/lvgl.h
+
+      - name: Build aurora_sim
+        working-directory: examples/aurora/sim
+        run: |
+          cmake -B build -DLVGL_DIR=/tmp/lvgl
+          cmake --build build -j
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install toolkit
+        working-directory: tools/esp-harness
+        run: |
+          python -m pip install --upgrade pip
+          pip install Pillow
+          pip install -e .
+
+      - name: sim diff vs golden
+        run: |
+          esp-harness sim diff \
+              --bin examples/aurora/sim/build/aurora_sim \
+              --golden examples/aurora/sim/golden \
+              --scenes halo,grid,bloom,tilt,pulse,cell,keys,tone,system,glow,spin,notify,track
+
+      - name: toolkit integration tests
+        working-directory: tools/esp-harness
+        run: |
+          python -m pytest tests -v
+
+      - name: Upload diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-diff-failures
+          path: examples/aurora/sim/build/diff-out/
+          if-no-files-found: ignore

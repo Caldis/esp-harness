@@ -1,0 +1,142 @@
+"""`esp-harness build` — wrap `idf.py build` with structured output.
+
+We stream idf.py's stdout/stderr live (so humans see progress), accumulate
+all lines, then parse for errors/warnings on exit. Exit code 0 implies
+success; non-zero implies BUILD_FAILED with extracted error lines.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import time
+from pathlib import Path
+
+from esp_harness.core import idf_runner
+from esp_harness.exit_codes import BUILD_FAILED, OK, PROJECT_NOT_FOUND
+from esp_harness.output import Output
+
+# gcc/clang error: "/path/file.c:42:10: error: 'foo' undeclared"
+_GCC_RE = re.compile(r"^(?P<file>[^\s:][^:]*):(?P<line>\d+):(?:(?P<col>\d+):)?\s*(?P<level>error|fatal error|warning):\s*(?P<msg>.*)$")
+# ninja: error / FAILED: lines
+_NINJA_FAILED_RE = re.compile(r"^(?:FAILED:|ninja: error:)\s*(?P<msg>.*)$")
+# ld.lld errors
+_LD_RE = re.compile(r"^ld\.lld:\s+error:\s+(?P<msg>.*)$")
+
+
+def add_subparser(sub, add_common_flags) -> None:
+    p = sub.add_parser("build", help="Build the project (wraps `idf.py build`).")
+    p.add_argument(
+        "--project",
+        type=Path,
+        default=Path.cwd(),
+        help="Path to the ESP-IDF project (default: cwd).",
+    )
+    p.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress live build output on stderr (still captured for JSON).",
+    )
+    add_common_flags(p)
+
+
+def _parse_errors(lines: list[str]) -> tuple[list[dict], list[dict]]:
+    errors: list[dict] = []
+    warnings: list[dict] = []
+    for line in lines:
+        m = _GCC_RE.match(line.strip())
+        if m:
+            entry = {
+                "file": m["file"],
+                "line": int(m["line"]),
+                "col": int(m["col"]) if m["col"] else None,
+                "level": m["level"],
+                "message": m["msg"],
+                "raw": line,
+            }
+            (errors if "error" in m["level"] else warnings).append(entry)
+            continue
+        m = _NINJA_FAILED_RE.match(line.strip())
+        if m:
+            errors.append({"level": "build", "message": m["msg"], "raw": line})
+            continue
+        m = _LD_RE.match(line.strip())
+        if m:
+            errors.append({"level": "link", "message": m["msg"], "raw": line})
+    return errors, warnings
+
+
+def _find_artifacts(project_dir: Path) -> dict[str, str]:
+    build_dir = project_dir / "build"
+    artifacts: dict[str, str] = {}
+    if build_dir.is_dir():
+        for ext, key in [("*.elf", "elf"), ("*.bin", "bin"), ("*.map", "map")]:
+            matches = sorted(build_dir.glob(ext))
+            if matches:
+                artifacts[key] = str(matches[0].resolve())
+    return artifacts
+
+
+def run(args: argparse.Namespace, output: Output) -> int:
+    project = Path(args.project).resolve()
+    if not (project / "CMakeLists.txt").is_file():
+        output.failure(
+            exit_code=PROJECT_NOT_FOUND,
+            error=f"No CMakeLists.txt in {project}",
+            details={"project": str(project)},
+            human="Pass --project <path> or cd into the project root.",
+        )
+        return PROJECT_NOT_FOUND
+
+    output.info(f"building project: {project}")
+
+    started = time.monotonic()
+    live_print = (not args.quiet) and (not output.json_mode)
+
+    def on_line(line: str) -> None:
+        if live_print:
+            print(line)
+
+    try:
+        returncode, all_lines = idf_runner.run_idf_streaming(
+            ["build"], project_dir=project, on_line=on_line
+        )
+    except idf_runner.EnvError as e:
+        output.failure(exit_code=100, error=str(e))
+        return 100
+
+    elapsed_ms = int((time.monotonic() - started) * 1000)
+
+    errors, warnings = _parse_errors(all_lines)
+    artifacts = _find_artifacts(project)
+
+    if returncode == 0:
+        payload = {
+            "elapsed_ms": elapsed_ms,
+            "project": str(project),
+            "warnings": warnings,
+            "artifacts": artifacts,
+            "n_warnings": len(warnings),
+        }
+        output.success(payload, human=f"build OK in {elapsed_ms/1000:.1f}s "
+                                       f"({len(warnings)} warnings)")
+        return OK
+
+    output.failure(
+        exit_code=BUILD_FAILED,
+        error=f"build failed (exit {returncode}) after {elapsed_ms/1000:.1f}s",
+        details={
+            "elapsed_ms": elapsed_ms,
+            "project": str(project),
+            "returncode": returncode,
+            "errors": errors,
+            "warnings": warnings,
+            "n_errors": len(errors),
+            "n_warnings": len(warnings),
+        },
+        human="\n".join(
+            f"  {e.get('file','?')}:{e.get('line','?')}: {e.get('level','error')}: {e['message']}"
+            for e in errors[:10]
+        ) if errors else None,
+    )
+    return BUILD_FAILED

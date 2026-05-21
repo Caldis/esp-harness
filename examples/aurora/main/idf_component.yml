@@ -1,0 +1,8 @@
+## IDF Component Manager Manifest File
+## BSP (esp32_s3_touch_amoled_2_16) is bundled as a local component under
+## ../components/, so we don't list it here. Just LVGL + sensor.
+dependencies:
+  lvgl/lvgl:
+    version: "9.*"
+    public: true
+  waveshare/qmi8658: "^1.0.0"
