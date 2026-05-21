@@ -223,14 +223,21 @@ int audio_play_tone(int freq_hz, int duration_ms, int volume_pct)
             phase += step;
             if (phase >= 1.0f) phase -= 1.0f;
         }
-        int written = esp_codec_dev_write(s_spk, chunk, n * (int)sizeof(int16_t));
-        if (written < 0) {
-            ESP_LOGE(TAG, "codec_dev_write: %d", written);
+        int n_bytes = n * (int)sizeof(int16_t);
+        /* esp_codec_dev_write returns esp_err_t (0 = OK), NOT a POSIX
+         * byte count. Treat any non-zero return as an error and account
+         * the bytes we successfully handed off ourselves. Pre-v1.7.1
+         * this loop summed `written` directly and reported 0 bytes for
+         * every successful tone — the audio played fine but the JSON
+         * lied. */
+        int rc_w = esp_codec_dev_write(s_spk, chunk, n_bytes);
+        if (rc_w != 0) {
+            ESP_LOGE(TAG, "codec_dev_write: %d", rc_w);
             free(chunk);
             esp_codec_dev_close(s_spk);
-            return written;
+            return rc_w;
         }
-        total_bytes += written;
+        total_bytes += n_bytes;
         total_samples -= n;
     }
 
@@ -299,6 +306,16 @@ int audio_record_peak(int duration_ms, float *peak_dbfs, float *rms_dbfs)
     int32_t peak = 0;
     int64_t sumsq = 0;
     int64_t n_total = 0;
+    /* Throwaway read: the first DMA buffer after esp_codec_dev_open
+     * frequently contains stale / uninitialised samples that ride to
+     * full-scale int16 and pin peak_dbfs at 0.0 dBFS regardless of
+     * actual ambient. Discard one buffer-worth before measuring.
+     * Costs ~12 ms at 22050 Hz × 256 samples; invisible to the user
+     * but eliminates the false-clip reading. */
+    {
+        int discard_bytes = TONE_CHUNK_SAMPLES * (int)sizeof(int16_t);
+        (void)esp_codec_dev_read(s_mic, chunk, discard_bytes);
+    }
     while (total_samples > 0) {
         int n = total_samples < TONE_CHUNK_SAMPLES ? total_samples : TONE_CHUNK_SAMPLES;
         int bytes = n * (int)sizeof(int16_t);
@@ -316,6 +333,9 @@ int audio_record_peak(int duration_ms, float *peak_dbfs, float *rms_dbfs)
         for (int i = 0; i < n; ++i) {
             int v = (int)chunk[i];
             int abs_v = v < 0 ? -v : v;
+            /* Cap at INT16_MAX so a single -32768 sample (abs=32768)
+             * cannot produce a >0 dBFS reading. */
+            if (abs_v > 32767) abs_v = 32767;
             if (abs_v > peak) peak = abs_v;
             sumsq += (int64_t)v * (int64_t)v;
         }
@@ -409,6 +429,12 @@ int audio_record_loopback(int16_t *buf, int n_samples,
     }
     esp_codec_dev_set_in_gain(s_mic, 18.0f);
 
+    /* Throwaway: discard the first DMA buffer (stale post-open). */
+    {
+        int16_t throwaway[TONE_CHUNK_SAMPLES];
+        (void)esp_codec_dev_read(s_mic, throwaway,
+                                  TONE_CHUNK_SAMPLES * (int)sizeof(int16_t));
+    }
     int remaining = n_samples;
     int16_t *p = buf;
     while (remaining > 0) {
@@ -431,6 +457,7 @@ int audio_record_loopback(int16_t *buf, int n_samples,
     for (int i = 0; i < n_samples; ++i) {
         int v = (int)buf[i];
         int abs_v = v < 0 ? -v : v;
+        if (abs_v > 32767) abs_v = 32767;  /* cap so peak_dbfs ≤ 0 */
         if (abs_v > peak) peak = abs_v;
         sumsq += (int64_t)v * (int64_t)v;
     }
@@ -605,6 +632,12 @@ int audio_record_loopback_dynamic(int16_t *buf, int max_samples,
     }
     esp_codec_dev_set_in_gain(s_mic, 18.0f);
 
+    /* Throwaway: discard the first DMA buffer (stale post-open). */
+    {
+        int16_t throwaway[TONE_CHUNK_SAMPLES];
+        (void)esp_codec_dev_read(s_mic, throwaway,
+                                  TONE_CHUNK_SAMPLES * (int)sizeof(int16_t));
+    }
     int captured = 0;
     while (captured < max_samples) {
         if (stop_flag && *stop_flag) break;
@@ -634,6 +667,7 @@ int audio_record_loopback_dynamic(int16_t *buf, int max_samples,
     for (int i = 0; i < captured; ++i) {
         int v = (int)buf[i];
         int abs_v = v < 0 ? -v : v;
+        if (abs_v > 32767) abs_v = 32767;  /* cap so peak_dbfs ≤ 0 */
         if (abs_v > peak) peak = abs_v;
         sumsq += (int64_t)v * (int64_t)v;
     }

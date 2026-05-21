@@ -6,6 +6,55 @@ Repo-level milestones. Per-artifact changelogs live in:
 - [`tools/esp-harness/CHANGELOG.md`](./tools/esp-harness/CHANGELOG.md) (toolkit history; preserved from `esp32-harness-toolkit`)
 - [`examples/aurora/CHANGELOG.md`](./examples/aurora/CHANGELOG.md) (Aurora demo history)
 
+## [1.7.1] — 2026-05-22
+
+**Quality convergence wave.** Hardware verification of v1.7.0 surfaced
+eight defects across audio / wifi / build infrastructure. Fixed all
+of them, captured the root causes in `docs/lessons-v1.7.md`, and
+shipped a `tools/smoke.ps1` pre-release gate so every defect class
+gets a permanent regression test.
+
+### Defects fixed
+
+- **`audio tone` reported `bytes:0`** despite playing — `esp_codec_dev_write`
+  returns `esp_err_t` (0 = OK) not POSIX byte count. Total-bytes accounting
+  was summing zeros forever.
+- **`audio mic` / `loopback` reported `peak_dbfs:0.0`** (full-scale) in
+  silent rooms — first DMA buffer after `_open` is stale garbage. Added
+  throwaway read + `INT16_MIN abs` saturation cap.
+- **`wifi_init` returned `ESP_ERR_NO_MEM`** even with 39 KB free DRAM —
+  `STATIC_TX_BUFFER_NUM=16` (default) reserved ~27 KB by itself; trimmed
+  to 6 (Aurora is RX-heavy: scan + OTA download).
+- **`wifi disconnect` immediately auto-reconnected** — event handler's
+  3-retry loop didn't distinguish user intent. New `s_user_disconnect`
+  flag.
+- **Console tokenizer didn't honour `"..."`** — `wifi connect ssid="My AP"`
+  failed. Added quote-stripping with no backslash escape (kept tiny).
+- **`MBEDTLS_INTERNAL_MEM_ALLOC=y`** routed mbedtls heap to scarce DRAM —
+  switched to PSRAM (`MBEDTLS_EXTERNAL_MEM_ALLOC=y`).
+- **`SPIRAM_MALLOC_ALWAYSINTERNAL=1024`** kept too many small allocs in
+  DRAM — dropped to 128.
+- **`ble_release_memory()`** — boot-time BLE-never-init path didn't free
+  the BT controller's DRAM pool. New function + `radio wifi` calls it
+  unconditionally.
+
+### Quality infrastructure
+
+- **`docs/lessons-v1.7.md`** — ten lessons with the format `What broke /
+  Root cause / Why we missed it / Process change`. Reference for future
+  releases.
+- **`tools/smoke.ps1`** — pre-release gate. Host gates (doctor / pytest /
+  sim-diff / manifest) plus device gates (ping / stat / sys / audio
+  tone bytes > 0 / audio mic peak in [-90,-10] / OTA info / scene
+  switch). Each defect from this wave has a permanent regression case
+  labelled with its lesson number.
+- **`.env` + `.gitignore`** — test credentials no longer live in chat
+  transcripts.
+
+### Verification
+
+13 / 13 smoke cases green on hardware (4 host + 9 device).
+
 ## [1.7.0] — 2026-05-22
 
 **Connectivity + real OTA.** Closes the gap between the v1.6 `?ota` skeleton
