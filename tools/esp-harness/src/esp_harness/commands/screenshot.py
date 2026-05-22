@@ -55,7 +55,10 @@ def add_subparser(sub, add_common_flags) -> None:
         "--size",
         type=int,
         default=128,
-        help="Downsample size sent to firmware via ?dump w=N (default 128).",
+        help="Downsample size sent to firmware via ?dump w=N (default 128). "
+             "Firmware accepts 32..2048 but additionally caps at panel "
+             "dimensions; the actual emitted size is in the OK line's "
+             "`w_actual=` field (gap G-F1b).",
     )
     p.add_argument(
         "--timeout",

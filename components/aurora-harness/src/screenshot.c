@@ -123,17 +123,45 @@ static void do_snapshot_async(void *user)
 
 /* ── cmd_dump ────────────────────────────────────────────────────── */
 
+/* Maximum target_w we accept. Bumped from the legacy 256 cap so the
+ * agent-dashboard's dual-pane sessions scene can be captured at full
+ * panel resolution (gap G-F1b). At 1024×1024×2 RGB565 the downsample
+ * buffer is ~2 MB, still well inside the typical PSRAM budget (the
+ * Aurora board has 8 MB external + 512 KB internal) — but the firmware
+ * caps at the active screen dimensions anyway, so a `w=2048` request
+ * downgrades to whatever the panel actually is. */
+#define DUMP_TARGET_W_MIN  32
+#define DUMP_TARGET_W_MAX  2048
+
 static int cmd_dump(const console_args_t *args)
 {
-    int target_w = 128;
+    /* requested = what the host asked for (before clamping); actual =
+     * what the device will emit. Both end up in the OK line so the host
+     * can detect silent downgrades (G-F1b). */
+    int requested_w = 128;
+    bool w_was_set = false;
     for (int i = 1; i < args->argc; ++i) {
         const char *a = args->argv[i];
         if (strncmp(a, "w=", 2) == 0) {
             int v = atoi(a + 2);
-            if (v >= 32 && v <= 256) target_w = v;
+            if (v > 0) {
+                requested_w = v;
+                w_was_set = true;
+            }
         }
     }
-    int target_h = target_w;
+    /* Clamp to the absolute legal range first. */
+    int target_w = requested_w;
+    const char *clamp_reason = "ok";
+    if (!w_was_set) {
+        clamp_reason = "default";
+    } else if (target_w < DUMP_TARGET_W_MIN) {
+        target_w = DUMP_TARGET_W_MIN;
+        clamp_reason = "below_min";
+    } else if (target_w > DUMP_TARGET_W_MAX) {
+        target_w = DUMP_TARGET_W_MAX;
+        clamp_reason = "above_max";
+    }
 
     lv_obj_t *scr = lv_screen_active();
     int32_t src_w = lv_obj_get_width(scr);
@@ -142,6 +170,15 @@ static int cmd_dump(const console_args_t *args)
         console_reply_err("invalid screen size %dx%d", (int)src_w, (int)src_h);
         return 1;
     }
+    /* And clamp to the active screen — there is no useful information
+     * past panel resolution and we'd waste PSRAM on the downsample
+     * buffer. The host learns from `reason=panel_cap` in the OK line
+     * that it didn't get the size it asked for. */
+    if (target_w > src_w) {
+        target_w = (int)src_w;
+        clamp_reason = "panel_cap";
+    }
+    int target_h = target_w;
 
     if (s_snap_buf == NULL || s_snap_w != src_w || s_snap_h != src_h) {
         if (s_snap_buf) {
@@ -227,12 +264,16 @@ static int cmd_dump(const console_args_t *args)
         }
     }
 
-    char meta[80];
+    char meta[160];
     snprintf(meta, sizeof(meta), "w=%d h=%d fmt=RGB565LE bytes=%u",
              target_w, target_h, (unsigned)out_bytes);
     /* Self-describing OK: name the tag so host parsers don't have to
-     * grep firmware source (agent-dashboard G-4). */
-    console_reply_ok("dump start tag=DUMP %s", meta);
+     * grep firmware source (agent-dashboard G-4), and include the
+     * requested-vs-actual width + reason so the host can detect
+     * silent downgrades from the requested w (G-F1b). */
+    console_reply_ok(
+        "dump start tag=DUMP %s w_requested=%d w_actual=%d reason=%s",
+        meta, requested_w, target_w, clamp_reason);
     console_begin_payload("DUMP", meta);
 
     /* 48 input bytes per 64-char output line. */
@@ -262,7 +303,8 @@ static int cmd_dump(const console_args_t *args)
 }
 
 static const console_cmd_t s_cmd_dump = { "?dump", cmd_dump,
-    "screenshot DUMP_BEGIN/END base64 RGB565 (default 128x128; pass w=N)" };
+    "screenshot DUMP_BEGIN/END base64 RGB565 (default 128x128; pass w=N; "
+    "capped at panel width or 2048 — see w_actual/reason in OK line)" };
 
 void harness_screenshot_register(void)
 {

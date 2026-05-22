@@ -13,7 +13,11 @@
  *      over the screen — so the UI chrome (indicator dots, scene name)
  *      is included.
  *   3. Box-filter downsample to target_w x target_w (default 128;
- *      32..256 range).
+ *      legal range 32..2048; further capped to the active panel
+ *      dimensions). Requests outside the legal range are silently
+ *      clamped, and the OK line carries `w_requested=N w_actual=M
+ *      reason=<below_min|above_max|panel_cap|default|ok>` so host
+ *      parsers can detect silent downgrades (gap G-F1b).
  *   4. Base64-encode and emit via console_begin_payload("DUMP", ...).
  *
  * The toolkit's `esp-harness screenshot` is the host-side consumer.
