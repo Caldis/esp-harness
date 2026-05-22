@@ -8,7 +8,7 @@ esp-harness console --cmd "scene list" --payload SCENES --json
 esp-harness manifest --json
 ```
 
-This file mirrors what `scene list` returns at v1.1. Update it when scenes are added or renamed.
+This file mirrors what `scene list` returns at v1.7.1. Update it when scenes are added or renamed.
 
 ## Scene → peripheral → action
 
@@ -32,6 +32,8 @@ This file mirrors what `scene list` returns at v1.1. Update it when scenes are a
 | 15 | XVI | Spin | IMU gyro (QMI8658) | next | — | `?sensor` (includes gyro[3] + temp_c) | Three signed bars X/Y/Z, ±250 dps full scale, 20 Hz. |
 | 16 | XVII | Survey | WiFi STA scan, tabular | next | trigger scan (releases BLE if up) | `wifi scan` | Top-8 SSIDs as a list: SSID + channel + RSSI + auth + horizontal RSSI bar. BOOT=rescan, USER=toggle sort (rssi-desc ↔ channel-asc). Data-table complement to IX Spectrum. |
 | 17 | XVIII | Sniff | BLE passive scan, tabular | next | trigger 2 s scan | `ble scan` | Top-8 devices as a list: name-or-addr + RSSI + addr type (pub/rnd) + bar. BOOT=rescan, USER=toggle name/addr display. Data-table complement to VIII Whisper. Fails if WiFi has been up since boot — surfaced via state line. |
+| 18 | XIX | Notify | toast overlay (no peripheral) | next | hold to fire a 3 s toast | (no probe) | BOOT cycles through 5 toast variants (1.5 s default). Reference implementation for `harness_toast()`. |
+| 19 | XX | Track | progress overlay (no peripheral) | next | — | (no probe) | 5 s simulated "download" with `harness_progress(text, percent)`. Reference implementation for the progress primitive. |
 
 ## Conventions
 
