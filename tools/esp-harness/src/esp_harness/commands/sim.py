@@ -1,10 +1,11 @@
 """`esp-harness sim` — drive the host LVGL simulator.
 
-The companion `esp32-harness-showcase` ships a `sim/` directory that
-builds `aurora_sim.exe` (or `aurora_sim` on Linux/macOS) — a native
-binary running selected LVGL scenes inside an SDL2 window. This
-command wraps that binary so the AI loop can snapshot scenes without
-flashing.
+The Aurora demo at `examples/aurora/sim/` builds `aurora_sim.exe`
+(or `aurora_sim` on Linux/macOS) — a native binary running selected
+LVGL scenes inside an SDL2 window. Pre-v1.5 the sim lived in the
+now-archived esp32-harness-showcase repo; the legacy path is still
+detected as a fallback. This command wraps that binary so the AI
+loop can snapshot scenes without flashing.
 
 Subcommands:
   snapshot     start a scene, run for N ms, dump SDL window to BMP, exit.
@@ -223,7 +224,7 @@ def run(args: argparse.Namespace, output: Output) -> int:
             exit_code=PROJECT_NOT_FOUND,
             error=(
                 "aurora_sim binary not found. Build it via "
-                "esp32-harness-showcase/sim/CMakeLists.txt (see that "
+                "examples/aurora/sim/CMakeLists.txt (see that "
                 "directory's README), or pass --bin PATH explicitly."
             ),
         )

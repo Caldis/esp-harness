@@ -1,8 +1,10 @@
 """Console session helper — speaks the line-based protocol with the device.
 
-The device-side firmware (see esp32-harness-showcase's
-`main/harness/console_protocol.c`) accepts newline-delimited commands and
-responds with `OK:`, `ERR:`, or `EVT:` prefixed lines. Multi-line binary
+The device-side firmware (see
+`components/aurora-harness/src/console_protocol.c` for the implementation
+and `examples/aurora/main/harness/harness_commands.c` for a consumer)
+accepts newline-delimited commands and responds with `OK:`, `ERR:`, or
+`EVT:` prefixed lines. Multi-line binary
 payloads are framed with `<TAG>_BEGIN <meta>\\n...\\n<TAG>_END\\n`.
 
 This module wraps that protocol over pyserial with the standard

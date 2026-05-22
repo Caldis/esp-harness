@@ -1,7 +1,8 @@
 """`esp-harness screenshot` — capture the device's framebuffer as a PNG.
 
-Pairs with the firmware-side `?dump` command (see esp32-harness-showcase
-main/harness/harness_commands.c). The device base64-encodes a downsampled
+Pairs with the firmware-side `?dump` command, implemented in
+`components/aurora-harness/src/screenshot.c` and registered automatically
+by `harness_default_register()`. The device base64-encodes a downsampled
 RGB565 framebuffer; we decode + reassemble + save.
 
 Usage:

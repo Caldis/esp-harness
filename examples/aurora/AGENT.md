@@ -24,10 +24,10 @@ useful by grepping, *register it* (add it to `?help` and/or
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                                                          │
-│   esp32-harness-toolkit          (sibling repo)          │
+│   esp-harness Python toolkit  (tools/esp-harness/)       │
 │   ──────────────────                                     │
 │   Python CLI: build / flash / monitor / console / sim    │
-│   diff / record / bench / manifest / init                │
+│   diff / record / bench / manifest / new / init          │
 │                                                          │
 └─────────────────┬────────────────────────────────────────┘
                   │ subprocess + JSON
@@ -61,7 +61,7 @@ changes.
 | Reusable UI primitive (toast, modal, picker) | `components/aurora-harness/src/<primitive>.c` + header at `include/harness/` | These are the LEGO blocks, lift them |
 | New peripheral driver | `main/peripherals/<name>.{c,h}` | Aurora has its peripherals, your project will too |
 | Host-side mock for a peripheral | `sim/mock_peripherals.c` | Project-specific — write the smallest plausible behavior |
-| Toolkit command | `esp32-harness-toolkit/src/esp_harness/commands/<name>.py` | Wire into `cli.py` + `manifest.py::TOOLKIT_COMMANDS` |
+| Toolkit command | `tools/esp-harness/src/esp_harness/commands/<name>.py` | Wire into `cli.py` + `manifest.py::TOOLKIT_COMMANDS` |
 
 ## 3. Standard workflows
 

@@ -36,7 +36,7 @@ esp-harness manifest --json
 
 A CLI that wraps ESP-IDF tooling (`idf.py`, esptool, serial monitor) with **structured JSON output** and **semantic exit codes**, so an agent can drive a full edit → build → flash → observe → decide loop without parsing free-form text or hanging on interactive monitors.
 
-**Path:** `D:\Code\esp32-harness-toolkit\`
+**Path:** `D:\Code\esp-harness\tools\esp-harness\` (within the esp-harness monorepo)
 **Entry point:** `esp-harness` (added to user's PowerShell profile by `install.ps1`)
 **Source of truth:** `src/esp_harness/`
 
@@ -473,7 +473,7 @@ Conventions:
 ## 9. Re-install / upgrade
 
 ```powershell
-cd D:\Code\esp32-harness-toolkit
+cd D:\Code\esp-harness\tools\esp-harness
 .\install.ps1
 ```
 

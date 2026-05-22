@@ -30,7 +30,7 @@ esp-harness sim diff --scenes halo --save-diffs D:\tmp\halo-diff
 ## Per-scene tolerances
 
 Animated scenes need looser thresholds. The defaults live in
-`esp32-harness-toolkit/src/esp_harness/commands/sim.py::SCENE_TOLERANCES`:
+`tools/esp-harness/src/esp_harness/commands/sim.py::SCENE_TOLERANCES`:
 
 | Scene | Threshold | Why |
 |---|---|---|
