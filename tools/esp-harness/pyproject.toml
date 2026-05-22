@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "esp-harness"
-version = "1.7.4"
+version = "1.7.5"
 description = "AI-driven dev-loop CLI for ESP-IDF + LVGL projects (build / flash / monitor / sim / manifest)"
 readme = "README.md"
 requires-python = ">=3.10"

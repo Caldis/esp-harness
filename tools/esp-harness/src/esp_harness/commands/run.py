@@ -155,6 +155,33 @@ def run(args: argparse.Namespace, output: Output) -> int:
                 human="Re-run from PowerShell so the build phase actually compiles.",
             )
             return 100
+        # Round-6 caught: build.py has a stale-ELF sanity gate (if rc=0
+        # but ELF mtime predates the build start, fail BUILD_FAILED)
+        # that run.py's build phase was missing. If a future env-
+        # detection short-circuit returns 0 without rebuilding AND
+        # without the MSys/Mingw banner, run.py would proceed to
+        # flash a stale binary silently. Mirror build.py's check.
+        if rc == 0 and artifacts.get("elf"):
+            try:
+                import os as _os
+                elf_mtime = _os.path.getmtime(artifacts["elf"])
+                if elf_mtime < started - 5.0:  # 5s slack for clock skew
+                    phases["build"]["ok"] = False
+                    phases["build"]["elf_age_seconds"] = int(started - elf_mtime)
+                    output.failure(
+                        exit_code=BUILD_FAILED,
+                        error=("run: build returned 0 but no new artifact "
+                               f"produced (ELF mtime predates build start "
+                               f"by {int(started - elf_mtime)}s)."),
+                        details={"phases": phases,
+                                 "total_elapsed_ms": int((time.monotonic() - overall_started) * 1000)},
+                        human="The toolchain ran but produced no output. "
+                              "Likely an environment-detection short-circuit "
+                              "(see build.py for the canonical version of this check).",
+                    )
+                    return BUILD_FAILED
+            except OSError:
+                pass
         if rc != 0:
             output.failure(
                 exit_code=BUILD_FAILED,

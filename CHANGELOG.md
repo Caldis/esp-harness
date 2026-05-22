@@ -6,6 +6,70 @@ Repo-level milestones. Per-artifact changelogs live in:
 - [`tools/esp-harness/CHANGELOG.md`](./tools/esp-harness/CHANGELOG.md) (toolkit history; preserved from `esp32-harness-toolkit`)
 - [`examples/aurora/CHANGELOG.md`](./examples/aurora/CHANGELOG.md) (Aurora demo history)
 
+## [1.7.5] — 2026-05-22 (round-6 final falsification pass)
+
+**Round-6 finally finds 0 critical.** Two blocking + 3 minor — all
+**Lesson 15 sibling regressions** (every prior round caught the
+previous defence missing a sibling path). All 5 fixed; v1.7.5 is
+the convergence-target release.
+
+### Blocking — `smoke.sh` not at parity with `smoke.ps1`
+
+The R5 cycle fixed three things in `smoke.ps1` (pytest 3-branch
+acceptance, `run --no-build` MSys coverage, exit-21 sim-binary
+tolerance) but **never propagated the same fixes to the Linux/Mac
+sibling script**. A non-Windows contributor running the documented
+gate from a fresh clone saw red on legitimate state.
+
+- `smoke.sh` pytest gate now accepts `3 passed` OR `2 passed + 1 skipped`
+  OR `passed.*skipped` (with no `failed`). Mirrors smoke.ps1 directly.
+- `smoke.sh` sim-diff step now tolerates exit 21 (sim binary absent)
+  — was killing the whole script under `set -e + pipefail`.
+- `smoke.sh` MSys trap loop now includes `run --no-build --port COM9
+  --seconds 2`. Same four-form coverage as smoke.ps1.
+- `smoke.sh` deep-trigger probe (round-6's other miss): the trigger
+  field for `run` lives at `details.phases.flash.trigger`, not
+  top-level. Checks all four locations + the `error` string.
+
+### Minor
+
+- **`run.py` build phase now has the stale-ELF mtime gate** that
+  `build.py` had since v1.7.2. If a future env-detection short-circuit
+  exits 0 without rebuilding AND without the MSys banner, `run` will
+  fail closed with `BUILD_FAILED + elf_age_seconds` rather than
+  flashing stale code.
+- **`tools/release.ps1` now auto-bumps `README.md`'s "Current
+  release" line** alongside `pyproject.toml`. Round-6 caught that
+  the script touched pyproject but not README — a maintainer who
+  forgot to edit README first would commit pyproject=$Version +
+  README=$old. Now structurally impossible (the script does both
+  in step 2 + step 2b).
+
+### Convergence trajectory (FINAL)
+
+| Round | Mode | Critical | Released |
+|---|---|---|---|
+| Author E2E | — | 5 | v1.7.1 |
+| Subagent 1 | verify | 3 | v1.7.1.x |
+| Subagent 2 | verify | 3 | v1.7.1.x |
+| Subagent 3 | verify | 1 | v1.7.2 |
+| Subagent 4 | falsify | 2 | v1.7.3 |
+| Subagent 5 | falsify + process audit | 1 | v1.7.4 |
+| **Subagent 6** | **falsify + 6-layer attack** | **0** | **v1.7.5** |
+
+**Critical count reached zero.** The remaining 2 blocking + 3 minor
+were all sibling-regression Lesson-15 instances — same class as
+every prior round — caught and fixed.
+
+### Smoke gate
+
+- `tools/smoke.ps1`: **7/7 host + 15/15 device = 22/22 green**.
+- `tools/smoke.sh`: **6/6 host green** (Linux/Mac runs the host-only
+  subset; device path is Windows-toolkit-specific).
+
+The bar from Lesson 7 ("every test that has ever caught a real bug
+runs every release") is now upheld across both shells.
+
 ## [1.7.4] — 2026-05-22 (round-5 falsification pass)
 
 **Round-5 falsified v1.7.3.** Same Lesson 15 defect class (defensive

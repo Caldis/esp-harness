@@ -76,6 +76,23 @@ $content = $content -replace $pattern, "version = `"$Version`""
 Set-Content -Path $pyproject -Value $content -NoNewline
 Say "bumped pyproject.toml::version to $Version"
 
+# 2b. README hand-maintained 'Current release' literal — round-6 caught
+# that release.ps1 didn't touch it, so a maintainer forgetting to edit
+# README first would commit pyproject=$Version + README=v$old.  Now
+# auto-bumped; smoke gate's README drift case catches any further
+# breakage before the commit.
+$readme = "$repoRoot\README.md"
+$readmeContent = Get-Content $readme -Raw
+$readmeBefore = $readmeContent
+# Match: | **Current release** | `vX.Y.Z` (...
+$readmePattern = '(\*\*Current release\*\*\s*\|\s*`)v\d+\.\d+\.\d+'
+$readmeContent = $readmeContent -replace $readmePattern, "`${1}v$Version"
+if ($readmeContent -eq $readmeBefore) {
+    Die "couldn't find '| **Current release** | \`vX.Y.Z\`' in $readme — table changed?"
+}
+Set-Content -Path $readme -Value $readmeContent -NoNewline
+Say "bumped README.md 'Current release' to v$Version"
+
 # 3. Re-install so importlib.metadata picks up the new number.
 $venvPy = "$repoRoot\tools\esp-harness\.venv\Scripts\python.exe"
 if (-not (Test-Path $venvPy)) {

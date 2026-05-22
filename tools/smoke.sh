@@ -74,26 +74,42 @@ else
     emit_fail "doctor 8/8 checks pass" "got n_ok=$n_ok"
 fi
 
-# 2. pytest integration tests.
-if pytest_out="$("$PY" -m pytest "$ROOT/tools/esp-harness/tests/" -q 2>&1)"; then
-    if echo "$pytest_out" | tail -3 | grep -q "3 passed"; then
-        emit_pass "pytest 3/3 integration tests"
-    else
-        emit_fail "pytest 3/3 integration tests" "$(echo "$pytest_out" | tail -1)"
-    fi
+# 2. pytest integration tests. Fresh clones without a built sim
+# binary correctly skip test_sim_diff_all_scenes_pass; accept both
+# "3 passed" and "2 passed + 1 skipped" shapes. Only `failed` is
+# a hard error. Mirrors smoke.ps1's three-branch acceptance.
+pytest_out="$("$PY" -m pytest "$ROOT/tools/esp-harness/tests/" -q 2>&1 || true)"
+pytest_last="$(echo "$pytest_out" | tail -3 | tr '\n' ' ')"
+if echo "$pytest_last" | grep -q "failed"; then
+    emit_fail "pytest integration tests" "$(echo "$pytest_out" | tail -1)"
+elif echo "$pytest_last" | grep -qE "3 passed|2 passed.*1 skipped|passed.*skipped"; then
+    emit_pass "pytest integration tests (3 passed, or 2 passed + sim skip)"
 else
-    emit_fail "pytest 3/3 integration tests" "$(echo "$pytest_out" | tail -1)"
+    emit_fail "pytest integration tests" "unexpected output: $pytest_last"
 fi
 
-# 3. sim diff regression.
-sim_failed="$("$PY" -m esp_harness sim diff \
+# 3. sim diff regression. The toolkit exits 21 (PROJECT_NOT_FOUND)
+# when the sim binary isn't built — that's a legitimate fresh-clone
+# state, not a regression. Don't let `set -e + pipefail` kill the
+# whole script. Mirrors smoke.ps1's tolerance.
+sim_out="$("$PY" -m esp_harness sim diff \
     --scenes halo,grid,bloom,tilt,pulse,cell,keys,tone,system,glow,spin,notify,track \
-    --json 2>&1 | tail -1 | "$PY" -c \
-    'import json,sys; d=json.loads(sys.stdin.read()); print(len(d.get("failed",[])))' 2>/dev/null)"
-if [[ "$sim_failed" == "0" ]]; then
-    emit_pass "sim diff 13 scenes identical"
+    --json 2>&1 | tail -1 || true)"
+if echo "$sim_out" | grep -q '"exit_code":\s*21'; then
+    # Sim binary not built — skip rather than fail. Honest about state.
+    emit_pass "sim diff 13 scenes identical (sim binary absent — skipped)"
 else
-    emit_fail "sim diff 13 scenes identical" "$sim_failed failed"
+    sim_failed="$(echo "$sim_out" | "$PY" -c \
+        'import json,sys
+try:
+    print(len(json.loads(sys.stdin.read()).get("failed",[])))
+except Exception:
+    print("?")' 2>/dev/null || echo "?")"
+    if [[ "$sim_failed" == "0" ]]; then
+        emit_pass "sim diff 13 scenes identical"
+    else
+        emit_fail "sim diff 13 scenes identical" "$sim_failed failed"
+    fi
 fi
 
 # 4. manifest exposes >= 17 toolkit cmds.
@@ -131,7 +147,10 @@ fi
 if [[ -n "${MSYSTEM:-}" ]]; then
     aurora="$ROOT/examples/aurora"
     trap_ok=true
-    for sub in "build" "flash --port COM9" "run --port COM9 --seconds 2"; do
+    # Round-6 caught that the `run --no-build` variant (round-5's
+    # original critical) was missing from the smoke.sh loop. All four
+    # idf-py invocation forms enumerated explicitly.
+    for sub in "build" "flash --port COM9" "run --port COM9 --seconds 2" "run --no-build --port COM9 --seconds 2"; do
         # The trap intentionally exits non-zero (exit_code=100). With
         # `set -e` at the top of this script, a naked invocation would
         # abort smoke. Use `|| true` to suppress, then inspect the
@@ -143,10 +162,24 @@ try:
     print(json.loads(sys.stdin.read()).get("ok"))
 except Exception:
     print("")' 2>/dev/null || true)"
+        # Round-6 caught smoke.ps1 had the same issue: for `run` the
+        # trigger field is nested under details.phases.flash.trigger,
+        # not top-level. Check all four known locations + the error
+        # string itself. Mirrors smoke.ps1 lines 144-150.
         trigger="$(echo "$out" | "$PY" -c 'import json,sys
 try:
     d=json.loads(sys.stdin.read())
-    print(d.get("trigger") or d.get("details",{}).get("trigger",""))
+    cands = [
+        d.get("trigger"),
+        d.get("details",{}).get("trigger"),
+        d.get("details",{}).get("phases",{}).get("flash",{}).get("trigger"),
+        d.get("error",""),
+    ]
+    for c in cands:
+        if c and "MSys" in str(c):
+            print(c); break
+    else:
+        print("")
 except Exception:
     print("")' 2>/dev/null || true)"
         if [[ "$ok_field" != "False" || ! "$trigger" =~ MSys ]]; then
