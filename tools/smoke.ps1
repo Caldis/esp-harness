@@ -131,14 +131,24 @@ Test-Case "build/flash/run refuse MSys/Mingw exit-0 (R3-CRIT + v1.7.3 regression
     return $true
 }
 
-Test-Case "version triangulation (--version == manifest != 1.5.0)" {
+Test-Case "version triangulation (CLI / manifest / pyproject all in sync)" {
+    # Three sources must agree, otherwise a release like v1.7.2 ships
+    # under a stale version literal. Was: only checked CLI vs manifest;
+    # round-4 caught that pyproject can also drift from the others if
+    # the toolkit isn't pip-reinstalled after a version bump.
     $cli_ver = (& $py -m esp_harness --version 2>&1) -join " " | ForEach-Object { ($_ -split " ")[-1] }
     $man = Json-Of @("manifest","--no-device")
+    $pyproject_line = (Select-String -Path "$RepoRoot\tools\esp-harness\pyproject.toml" -Pattern '^version\s*=').Line
+    $pyproject_ver = ($pyproject_line -split '"')[1]
+
     if ($cli_ver -ne $man.toolkit_version) {
-        throw "cli=$cli_ver != manifest=$($man.toolkit_version)"
+        throw "CLI=$cli_ver vs manifest=$($man.toolkit_version) — diverged"
     }
-    if ($cli_ver -eq "1.5.0") {
-        throw "stuck on stale 1.5.0 — __init__.py drifted from pyproject again?"
+    if ($cli_ver -ne $pyproject_ver) {
+        throw "CLI=$cli_ver vs pyproject.toml=$pyproject_ver — toolkit not pip-reinstalled?"
+    }
+    if ($cli_ver -eq "1.5.0" -or $cli_ver -eq "0.0.0+source") {
+        throw "stuck on a sentinel version — release pipeline broke"
     }
     return $true
 }
