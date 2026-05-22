@@ -132,6 +132,12 @@ esp-harness new my-thing --component-source depend   # via component manager (TB
   D:\tmp\diffs` then visually inspect.
 - "Tests fail unexpectedly?" → `cd tools/esp-harness && pytest tests -v`
   for fuller output.
+- "Cutting a release?" → **read [`RELEASING.md`](./RELEASING.md) first**,
+  then `.\tools\release.ps1 X.Y.Z`. The script structurally prevents
+  the v1.7.2 "tag without pyproject bump" failure mode — don't bypass it.
+- "Just landed a critical fix in a patch release?" → schedule a
+  **falsification** subagent round (not just verify). See
+  `docs/lessons-v1.7.md` L17.
 
 ## 6. Predecessor archives
 
