@@ -37,6 +37,16 @@ typedef struct {
 bool keys_init(void);
 void keys_get(keys_state_t *out);
 
+/* Synthesize a button press from the host — same effect on count
+ * counters and the `*_pressed` level as a real physical press held
+ * for `hold_ms`. Enables AI-driven exercise of button-gated flows
+ * (Listen / Tone / Vault / Glow etc.) without a human present.
+ *
+ * which ∈ {"boot", "user", "pwr"}. hold_ms 0 → 1 tick (a quick tap),
+ * >0 → keep pressed for that long. Returns true on accepted synth,
+ * false on unknown button. */
+bool keys_synth_press(const char *which, uint32_t hold_ms);
+
 #ifdef __cplusplus
 }
 #endif

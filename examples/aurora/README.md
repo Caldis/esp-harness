@@ -33,12 +33,12 @@ This repo is three things at once:
    containing the line-protocol console (`?help` / `?reset` /
    `OK:` / `ERR:` / `EVT:` / payload framing) and the LVGL scene
    framework. **Drop this into your own project** to get the same
-   AI-driveable dev loop. See [its README](./components/aurora-harness/README.md).
-3. **`sim/`** — host-side LVGL build under SDL2. Runs 11 of the 18
+   AI-driveable dev loop. See [its README](../../components/aurora-harness/README.md).
+3. **`sim/`** — host-side LVGL build under SDL2. Runs 13 of the 20
    scenes on a Windows / Linux / macOS desktop without flashing,
    enabling 5-second UI iterations + visual regression via
    `esp-harness sim diff`. See [`sim/README.md`](./sim/README.md) for
-   build instructions, [`sim/INTEGRATION.md`](./sim/INTEGRATION.md) for
+   build instructions, [`sim-base/INTEGRATION.md`](../../sim-base/INTEGRATION.md) for
    the "adopt this in my project" walkthrough.
 
 Across all three layers, the discovery surface is a single command:

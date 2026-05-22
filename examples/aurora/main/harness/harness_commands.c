@@ -805,7 +805,26 @@ static int cmd_audio(const console_args_t *args)
 
 static int cmd_keys(const console_args_t *args)
 {
-    (void)args;
+    /* Subcommands: (no args) = status JSON; press <name> [hold_ms] =
+     * synthesize a press for AI-driven button-flow exercise. */
+    if (args->argc >= 2 && strcmp(args->argv[1], "press") == 0) {
+        if (args->argc < 3) {
+            console_reply_err("usage: ?keys press <boot|user|pwr> [HOLD_MS]");
+            return 1;
+        }
+        const char *which   = args->argv[2];
+        uint32_t    hold_ms = (args->argc >= 4) ? (uint32_t)atoi(args->argv[3]) : 0;
+        if (!keys_synth_press(which, hold_ms)) {
+            console_reply_err("?keys press: unknown button '%s' (use boot|user|pwr)", which);
+            return 1;
+        }
+        console_send_evt("key_press which=%s hold_ms=%lu",
+                         which, (unsigned long)hold_ms);
+        console_reply_ok("{\"synth\":true,\"which\":\"%s\",\"hold_ms\":%lu}",
+                         which, (unsigned long)hold_ms);
+        return 0;
+    }
+    /* Default: state JSON. */
     keys_state_t k;
     keys_get(&k);
     console_reply_ok("{\"boot\":{\"pressed\":%s,\"count\":%lu},"
@@ -1006,7 +1025,8 @@ static const console_cmd_t s_cmd_power  = { "?power",  cmd_power,
 static const console_cmd_t s_cmd_audio  = { "audio",   cmd_audio,
     "audio tone|mic|loopback|vol: speaker tone / mic peak / record+play / volume" };
 static const console_cmd_t s_cmd_keys   = { "?keys",   cmd_keys,
-    "JSON: BOOT / USER / PWR button state + press counters" };
+    "?keys [press <boot|user|pwr> [HOLD_MS]]: button state JSON, or "
+    "synthesize a press for AI-driven button-flow exercise" };
 static const console_cmd_t s_cmd_sys    = { "?sys",    cmd_sys,
     "JSON: CPU / heap / temp / MAC / IDF / reset reason / uptime" };
 static const console_cmd_t s_cmd_sd     = { "?sd",     cmd_sd,

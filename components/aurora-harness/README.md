@@ -84,11 +84,12 @@ void app_main(void) {
 ## Installation
 
 This component is not yet on the IDF Component Registry. Until then,
-vendor it in:
+use `esp-harness new` (which wires this up for you), or vendor it in
+manually:
 
 ```cmake
 # In your project's top-level CMakeLists.txt, before `project(...)`:
-list(APPEND EXTRA_COMPONENT_DIRS path/to/esp32-harness-showcase/components)
+list(APPEND EXTRA_COMPONENT_DIRS path/to/esp-harness/components)
 ```
 
 Then add `aurora-harness` to your `main` component's `REQUIRES`:
@@ -343,8 +344,8 @@ harness_progress_dismiss();
 ```
 
 Each has a corresponding reference scene in the Aurora showcase:
-[scene_notify.c](../../main/scenes/scene_notify.c) for toast,
-[scene_track.c](../../main/scenes/scene_track.c) for progress —
+[scene_notify.c](../../examples/aurora/main/scenes/scene_notify.c) for toast,
+[scene_track.c](../../examples/aurora/main/scenes/scene_track.c) for progress —
 copy-paste from there when you need one.
 
 ## Threading model

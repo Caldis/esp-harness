@@ -51,6 +51,14 @@ static TaskHandle_t s_task = NULL;
 
 static bool was_boot = false, was_user = false;
 
+/* Synth-press override: when non-zero, the keys_task skips overwriting
+ * the named button's `pressed` level from the real GPIO/PMIC reading.
+ * Each is a tick count past which the override expires.
+ * Set by keys_synth_press(), checked by keys_task. */
+static volatile uint32_t s_synth_boot_until = 0;
+static volatile uint32_t s_synth_user_until = 0;
+static volatile uint32_t s_synth_pwr_until  = 0;
+
 static esp_err_t pmic_read_u8(uint8_t reg, uint8_t *out)
 {
     if (!s_pmic) return ESP_FAIL;
@@ -68,6 +76,7 @@ static void keys_task(void *arg)
 {
     (void)arg;
     for (;;) {
+        uint32_t now_ticks = xTaskGetTickCount();
         /* GPIO buttons — active-low (pressed = 0). */
         bool boot = (gpio_get_level(KEY_BOOT_GPIO) == 0);
         bool user = (gpio_get_level(KEY_USER_GPIO) == 0);
@@ -76,8 +85,13 @@ static void keys_task(void *arg)
         if (user && !was_user) s_state.user_count++;
         was_boot = boot;
         was_user = user;
-        s_state.boot_pressed = boot;
-        s_state.user_pressed = user;
+        /* Real GPIO wins unless a synth override is active for this
+         * button. The override is set by keys_synth_press() with an
+         * expiry tick; while active, we preserve s_state.<x>_pressed
+         * (which the synth set to true). After expiry the next poll
+         * resumes reflecting the GPIO. */
+        if (now_ticks >= s_synth_boot_until) s_state.boot_pressed = boot;
+        if (now_ticks >= s_synth_user_until) s_state.user_pressed = user;
 
         /* Diagnostic: log any non-zero IRQ status the first time we
          * see one, across all three banks. Helps identify which bit
@@ -187,4 +201,36 @@ bool keys_init(void)
 void keys_get(keys_state_t *out)
 {
     if (out) memcpy(out, &s_state, sizeof(*out));
+}
+
+/* ── Synthetic press (host-driven) ───────────────────────────────── */
+
+bool keys_synth_press(const char *which, uint32_t hold_ms)
+{
+    if (which == NULL) return false;
+    /* Anchor the override window slightly past the requested hold so
+     * even a 0-hold "quick tap" gets at least one keys_task poll
+     * window (POLL_MS = 50 ms) of visible pressed=true before the
+     * GPIO state takes back over. */
+    uint32_t window_ms = (hold_ms == 0) ? (POLL_MS + 5) : hold_ms;
+    uint32_t until = xTaskGetTickCount() + pdMS_TO_TICKS(window_ms);
+    if (strcmp(which, "boot") == 0) {
+        s_state.boot_count++;
+        s_state.boot_pressed = true;
+        s_synth_boot_until = until;
+    } else if (strcmp(which, "user") == 0) {
+        s_state.user_count++;
+        s_state.user_pressed = true;
+        s_synth_user_until = until;
+    } else if (strcmp(which, "pwr") == 0) {
+        s_state.pwr_count++;
+        s_state.pwr_pressed = true;
+        s_synth_pwr_until = until;
+    } else {
+        return false;
+    }
+    /* No spawned release task needed — the override-expiry check
+     * inside keys_task is the release mechanism, and it runs every
+     * POLL_MS anyway. */
+    return true;
 }

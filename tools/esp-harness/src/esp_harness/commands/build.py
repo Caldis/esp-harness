@@ -136,6 +136,64 @@ def run(args: argparse.Namespace, output: Output) -> int:
     errors, warnings = _parse_errors(all_lines)
     artifacts = _find_artifacts(project)
 
+    # Round-3 adversarial subagent caught this: from Git Bash on Windows
+    # idf.py prints `MSys/Mingw is no longer supported. Please follow
+    # the getting started guide...` and exits 0 *without compiling
+    # anything*. build.py used to accept rc=0 as success and return
+    # whatever stale ELF/BIN was already on disk — an AI agent who
+    # called `flash` after such a build would flash old code with no
+    # warning. Treat the message as a hard failure regardless of rc.
+    msys_refusal = any(
+        "MSys/Mingw is no longer supported" in line for line in all_lines
+    )
+    if msys_refusal:
+        output.failure(
+            exit_code=100,
+            error=("idf.py refused to build inside MSys/Mingw "
+                   "(common with Git Bash on Windows)."),
+            details={
+                "elapsed_ms": elapsed_ms,
+                "project": str(project),
+                "returncode": returncode,
+                "trigger": "MSys/Mingw is no longer supported",
+            },
+            human=("Re-run from PowerShell (not Git Bash) so idf.py's "
+                   "MSys check doesn't short-circuit. The toolkit's "
+                   "internal idf_runner activates the EIM env directly "
+                   "and is independent of your shell, but it can't "
+                   "override idf.py's own MSys detection."),
+        )
+        return 100
+
+    # Sanity gate against `returncode == 0 but nothing actually built`:
+    # if no ELF newer than this invocation's start, treat as failure.
+    # Catches any other future "warning but exit 0" cases we don't yet
+    # know about.
+    if returncode == 0 and artifacts.get("elf"):
+        try:
+            import os as _os
+            elf_mtime = _os.path.getmtime(artifacts["elf"])
+            if elf_mtime < started - 5.0:  # 5s slack for clock skew
+                output.failure(
+                    exit_code=BUILD_FAILED,
+                    error=("build returned 0 but no new artifact produced "
+                           "(ELF mtime predates build start by "
+                           f"{started - elf_mtime:.0f}s)."),
+                    details={
+                        "elapsed_ms": elapsed_ms,
+                        "project": str(project),
+                        "elf": artifacts["elf"],
+                        "elf_age_seconds": int(started - elf_mtime),
+                    },
+                    human="The toolchain ran but produced no output. "
+                          "Likely an environment-detection short-circuit. "
+                          "Try running `idf.py build` directly to see "
+                          "the underlying refusal.",
+                )
+                return BUILD_FAILED
+        except OSError:
+            pass
+
     if returncode == 0:
         payload = {
             "elapsed_ms": elapsed_ms,

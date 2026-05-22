@@ -124,6 +124,26 @@ buffer allocation, indev / touch). Once `lv_screen_active()` returns a
 valid object, aurora-harness's `scene_fw_init(lv_screen_active())`
 takes over from there.
 
+### Convention: where your BSP's public symbols live
+
+aurora-harness's scenes and the generated `esp-harness new` template
+follow the Espressif **`esp-bsp` family convention**:
+
+- Your BSP component exposes a public header at `include/bsp/esp-bsp.h`.
+  The aurora-harness scenes `#include "bsp/esp-bsp.h"` to get the
+  display init + brightness control entry points (not just the
+  lock — `bsp_display_brightness_set` etc).
+- A `bsp_display_start(void)` entry point initialises LVGL, allocates
+  draw buffers, registers indev callbacks, and returns. After this
+  returns, `lv_screen_active()` must be valid. The Aurora `app_main`
+  template calls it once.
+- The lock pair lives in the same header (or in the underlying
+  `bsp/display.h` re-export).
+
+If you're porting and don't want to mimic the whole esp-bsp surface,
+you only *strictly* need the two lock symbols — but a `bsp_display_start`
+entry-point keeps the scaffolded `app_main` compatible.
+
 Concretely a typical bring-up sequence looks like:
 
 ```c

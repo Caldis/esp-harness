@@ -26,8 +26,8 @@
 
 ## Checklist
 
-- [ ] I have read [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md)
-- [ ] I have read the relevant section of [`AGENT.md`](./AGENT.md) on where things go
+- [ ] I have read [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+- [ ] I have read the relevant section of [`AGENT.md`](../AGENT.md) on where things go
 - [ ] My PR has a single conceptual change (or, if multiple, they are tightly related and explained in the summary)
 - [ ] I have updated any affected documentation in the same PR
 - [ ] My change passes `esp-harness test` locally (3 integration tests)

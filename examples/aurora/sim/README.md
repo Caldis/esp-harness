@@ -17,10 +17,16 @@ bench, BLE scan) must stay on-target.
 ## Status: working
 
 End-to-end build verified on Windows 11 with **scoop**-installed MinGW
-gcc 16.1.0 + SDL2 2.30.10. `aurora_sim.exe` opens a 466×466 window
-running the three pure-render scenes (Halo / Grid / Bloom). Other scenes
-need their peripheral imports stubbed before they'll compile here — see
-`mock_peripherals.{c,h}` for the pattern.
+gcc 16.1.0 + SDL2 2.30.10. `aurora_sim.exe` opens a 466×466 window.
+
+13 of the 20 scenes are host-renderable today (halo / grid / bloom /
+tilt / pulse / cell / keys / tone / system / glow / spin / notify /
+track) — these are the ones the CI sim-diff workflow gates on.
+The other 7 (echo / vault / whisper / spectrum / listen / survey /
+sniff) depend on hardware peripherals (audio / SD / BLE / WiFi /
+mic) and are stubbed-out at compile time via `mock_peripherals.{c,h}`.
+The mock pattern is what you copy when adding host parity for a new
+peripheral.
 
 ## Setup (verified path — scoop, user-mode)
 

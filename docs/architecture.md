@@ -171,4 +171,4 @@ shape and substituting your scene list + your peripheral mocks. See
   today. Adding a daemon for orchestration would be a v2.0 conversation.
 
 See [`harness-report.html`](./harness-report.html) for a visual
-walkthrough of how this architecture evolved across v1.0–v1.5.
+walkthrough of how this architecture evolved across v1.0–v1.7.

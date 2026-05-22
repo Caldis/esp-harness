@@ -21,7 +21,7 @@
 
   <!-- Root -->
   <text x="40" y="40" class="root">esp-harness/</text>
-  <text x="220" y="40" class="annot">monorepo · v1.5.0 · MIT</text>
+  <text x="220" y="40" class="annot">monorepo · v1.7.1 · MIT</text>
 
   <!-- components/ — the LIBRARY -->
   <g transform="translate(40, 60)">
