@@ -63,6 +63,58 @@ The mutex **must be recursive** — the LVGL task itself takes it during
 its own callbacks (via the BSP's standard wrapper) and our console
 handlers take it again on top.
 
+### Wiring it into the build
+
+The two symbols just need to be visible at link time. Two equivalent
+ways:
+
+**Option A — drop the file straight into `main/`** (zero extra wiring;
+the simplest):
+
+```cmake
+# main/CMakeLists.txt
+idf_component_register(
+    SRCS
+        "myproject_main.c"
+        "myboard_bsp.c"          # ← just add it here
+        "scenes/scene_hello.c"
+    INCLUDE_DIRS "." "scenes"
+    REQUIRES
+        lvgl__lvgl
+        aurora-harness
+        # NOTE: no BSP REQUIRES line — your shim provides the symbols.
+    PRIV_REQUIRES nvs_flash esp_timer
+)
+```
+
+**Option B — package it as its own component** (cleaner if multiple
+projects reuse the same custom board):
+
+```
+components/
+└── myboard-bsp/
+    ├── CMakeLists.txt        ← see below
+    ├── include/
+    │   └── myboard_bsp.h     ← myboard_bsp_init_lock() prototype
+    └── myboard_bsp.c
+```
+
+```cmake
+# components/myboard-bsp/CMakeLists.txt
+idf_component_register(
+    SRCS "myboard_bsp.c"
+    INCLUDE_DIRS "include"
+    REQUIRES driver freertos
+)
+```
+
+Then add `myboard-bsp` to your `main/CMakeLists.txt`'s `REQUIRES`
+(not `PRIV_REQUIRES` — aurora-harness needs to see the symbols too).
+
+Either way, **do not list `aurora-harness` and a different BSP
+component both in REQUIRES** — they'd both define `bsp_display_lock`
+and the link fails with a "multiple definition" error.
+
 ---
 
 ## What you still need beyond the lock
