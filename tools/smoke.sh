@@ -105,15 +105,58 @@ else
     emit_fail "manifest exposes >= 17 toolkit cmds" "got $n_cmds"
 fi
 
-# 5. version triangulation (regression for v1.7.1 single-source-of-truth fix).
+# 5. version triangulation: CLI, manifest, AND pyproject.toml must
+# all agree. Round-4 caught that v1.7.2 shipped reporting as 1.7.1
+# because only the first two were compared while pyproject was the
+# stale third source.
 cli_version="$("$PY" -m esp_harness --version 2>&1 | awk '{print $2}')"
 manifest_version="$("$PY" -m esp_harness manifest --no-device --json 2>&1 | tail -1 | "$PY" -c \
     'import json,sys; print(json.loads(sys.stdin.read()).get("toolkit_version","?"))')"
-if [[ "$cli_version" == "$manifest_version" && "$cli_version" != "1.5.0" ]]; then
-    emit_pass "version triangulation matches (--version == manifest)"
+pyproject_version="$(grep -E '^version\s*=' "$ROOT/tools/esp-harness/pyproject.toml" \
+    | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+if [[ "$cli_version" == "$manifest_version" \
+   && "$cli_version" == "$pyproject_version" \
+   && "$cli_version" != "1.5.0" \
+   && "$cli_version" != "0.0.0+source" ]]; then
+    emit_pass "version triangulation (CLI / manifest / pyproject all in sync)"
 else
-    emit_fail "version triangulation matches (--version == manifest)" \
-              "cli=$cli_version manifest=$manifest_version"
+    emit_fail "version triangulation (CLI / manifest / pyproject all in sync)" \
+              "cli=$cli_version manifest=$manifest_version pyproject=$pyproject_version"
+fi
+
+# 6. Build/flash/run MSys trap probe — only meaningful if we're running
+# under Git Bash's MSys env. On a "real" Linux/Mac shell this case is
+# a no-op (idf.py doesn't refuse). We detect by checking $MSYSTEM and
+# skip when unset, so the gate stays portable.
+if [[ -n "${MSYSTEM:-}" ]]; then
+    aurora="$ROOT/examples/aurora"
+    trap_ok=true
+    for sub in "build" "flash --port COM9" "run --port COM9 --seconds 2"; do
+        # The trap intentionally exits non-zero (exit_code=100). With
+        # `set -e` at the top of this script, a naked invocation would
+        # abort smoke. Use `|| true` to suppress, then inspect the
+        # JSON we captured. Same for the JSON parse — if jq-style
+        # extraction fails, we fall back to empty strings.
+        out="$("$PY" -m esp_harness $sub --project "$aurora" --json 2>&1 | tail -1 || true)"
+        ok_field="$(echo "$out" | "$PY" -c 'import json,sys
+try:
+    print(json.loads(sys.stdin.read()).get("ok"))
+except Exception:
+    print("")' 2>/dev/null || true)"
+        trigger="$(echo "$out" | "$PY" -c 'import json,sys
+try:
+    d=json.loads(sys.stdin.read())
+    print(d.get("trigger") or d.get("details",{}).get("trigger",""))
+except Exception:
+    print("")' 2>/dev/null || true)"
+        if [[ "$ok_field" != "False" || ! "$trigger" =~ MSys ]]; then
+            emit_fail "build/flash/run refuse MSys/Mingw exit-0 (R3+R4 regression)" \
+                      "[$sub] ok='$ok_field' trigger='$trigger'"
+            trap_ok=false
+            break
+        fi
+    done
+    [[ "$trap_ok" == "true" ]] && emit_pass "build/flash/run refuse MSys/Mingw exit-0 (R3+R4 regression)"
 fi
 
 echo
