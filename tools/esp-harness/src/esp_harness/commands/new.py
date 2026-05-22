@@ -438,8 +438,14 @@ def add_subparser(sub, add_common_flags) -> None:
 
 
 def _c_safe_name(name: str) -> str:
-    """Make a project name safe for C identifiers: replace -+./ with _."""
-    return "".join(c if c.isalnum() else "_" for c in name)
+    """Make a project name safe for C identifiers AND a CMake target.
+    Replace non-alphanum with `_`; prefix a leading underscore if the
+    name starts with a digit (so `1app` → `_1app`, since C identifiers
+    and some CMake targets reject digit-leading names)."""
+    out = "".join(c if c.isalnum() else "_" for c in name)
+    if out and out[0].isdigit():
+        out = "_" + out
+    return out or "_unnamed"
 
 
 def _pinnable_version() -> str:

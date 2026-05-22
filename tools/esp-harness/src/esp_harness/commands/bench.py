@@ -43,9 +43,15 @@ BASELINE_PATH = Path(__file__).resolve().parent.parent / "data" / "baseline.json
 # Higher thresholds where the measurement is intrinsically noisy.
 REGRESSION_CHECKS: list[tuple[tuple[str, ...], str, float]] = [
     (("stat", "fps"),                 "down", 10.0),
-    (("stat", "heap_free"),           "down",  5.0),
+    # 10% (was 5%) — Aurora's audio loopback transiently allocates
+    # ~440 KB PSRAM; if bench --baseline runs in a "calm" moment and
+    # --compare runs right after a loopback, we see ~7% PSRAM drift
+    # that isn't a real regression. 10% absorbs the natural transient
+    # while still catching real leaks (which manifest as >>10% over
+    # time).
+    (("stat", "heap_free"),           "down", 10.0),
     (("stat", "int_free"),            "down", 10.0),
-    (("stat", "psram_free"),          "down",  5.0),
+    (("stat", "psram_free"),          "down", 10.0),
     (("audio_loopback", "elapsed_ms"), "up",   20.0),
     (("ble_scan", "adv_events"),      "down", 40.0),  # BLE is noisy
     (("sd_bench", "write_kbps"),      "down", 20.0),
