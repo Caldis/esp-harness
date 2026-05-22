@@ -71,6 +71,16 @@ live, the screenshot pipeline ready.
 > + manually wire your BSP into `main/CMakeLists.txt`, or see the
 > generated `README.md`'s "Before your first build" section.
 
+> **Windows + clean Python install?** `pip install -e tools/esp-harness/`
+> may put the `esp-harness` shim at a path that isn't on `PATH` by
+> default (e.g. `…\AppData\Roaming\Python\Python3xx\Scripts\`). Two
+> equivalent fixes:
+> - run `tools/esp-harness/install.ps1` — creates a dedicated venv,
+>   adds a PowerShell-profile shim function so `esp-harness` resolves
+>   in a new shell.
+> - or use `python -m esp_harness <command>` always (works regardless
+>   of `PATH`).
+
 For the full setup (flashing to hardware, running the simulator, etc.)
 see [`docs/getting-started.md`](./docs/getting-started.md).
 
