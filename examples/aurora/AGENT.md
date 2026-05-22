@@ -34,14 +34,14 @@ useful by grepping, *register it* (add it to `?help` and/or
                   ▼
 ┌──────────────────────────────────────────────────────────┐
 │                                                          │
-│   esp32-harness-showcase                                 │
+│   esp-harness monorepo                                   │
 │   ──────────────────                                     │
 │   ├── components/aurora-harness/      reusable scaffold  │
 │   │      console_protocol + scene_framework +            │
 │   │      toast + default ?stat                           │
-│   ├── main/                           Aurora-specific:   │
+│   ├── examples/aurora/main/           Aurora-specific:   │
 │   │      aurora_main + 20 scenes + peripheral commands   │
-│   └── sim/                            host LVGL build:   │
+│   └── examples/aurora/sim/            host LVGL build:   │
 │          SDL2 entry + ESP-IDF stubs + mock peripherals   │
 │                                                          │
 └──────────────────────────────────────────────────────────┘

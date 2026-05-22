@@ -126,7 +126,7 @@ are the contract the toolkit's `console_session.py` speaks against.
 
 ```powershell
 # from a shell with ESP-IDF activated (or use the EIM PowerShell)
-cd D:\Code\esp32-harness-showcase
+cd examples\aurora            # from the esp-harness monorepo root
 idf.py set-target esp32s3
 idf.py -p COM9 build flash monitor
 ```
@@ -134,7 +134,7 @@ idf.py -p COM9 build flash monitor
 …or, if you have the toolkit installed:
 
 ```powershell
-esp-harness run --project D:\Code\esp32-harness-showcase \
+esp-harness run --project examples\aurora `
                 --seconds 5 --until "aurora ready" --json
 esp-harness screenshot --out aurora.png --size 192
 esp-harness monitor --tap            # tap the screen via console

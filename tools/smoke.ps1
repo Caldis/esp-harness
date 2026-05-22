@@ -242,30 +242,32 @@ if ($SkipDevice) {
         }
         return $true
     }
-    Test-Case "?keys press boot synth (R3-bug regression)" {
-        # Round-3 subagent flagged: no synthetic-keypress means AI
-        # agents can't exercise button-gated flows. We added
-        # ?keys press <name> [hold_ms] in v1.7.2. Verify: count
-        # increments, mid-hold pressed=true, post-release =false.
-        #
-        # hold_ms = 1500 — three separate `?keys` round-trips at
-        # ~200ms each plus margin must complete inside the window,
-        # otherwise the override expires before mid-hold query lands.
-        $before = (Console-Body "?keys").boot.count
-        & $py -m esp_harness console --cmd "?keys press boot 1500" `
-              --port $Port --wait-evt "key_press" --evt-timeout 2 `
-              --json 2>&1 | Out-Null
-        $mid = Console-Body "?keys"
-        if (-not $mid.boot.pressed) {
-            throw "mid-hold pressed=false (keys_task overrode synth — override window expired before query)"
-        }
-        if ($mid.boot.count -ne ($before + 1)) {
-            throw "count didn't increment: was $before, now $($mid.boot.count)"
-        }
-        Start-Sleep -Milliseconds 1800
-        $after = Console-Body "?keys"
-        if ($after.boot.pressed) {
-            throw "release didn't fire — synth window stuck"
+    Test-Case "?keys press boot/user/pwr synth all 3 (R3+R4 regression)" {
+        # Round-3 subagent added the test; round-4 caught that pwr
+        # specifically was never wired into the keys_task override
+        # check (s_synth_pwr_until was set but never read). All three
+        # buttons must:
+        #   (a) increment their count on synth
+        #   (b) be observably pressed=true mid-hold (within the window)
+        #   (c) return to pressed=false after the window expires
+        # hold_ms = 1500 absorbs host round-trip latency.
+        foreach ($btn in @("boot", "user", "pwr")) {
+            $before = (Console-Body "?keys").$btn.count
+            & $py -m esp_harness console --cmd "?keys press $btn 1500" `
+                  --port $Port --wait-evt "key_press" --evt-timeout 2 `
+                  --json 2>&1 | Out-Null
+            $mid = Console-Body "?keys"
+            if (-not $mid.$btn.pressed) {
+                throw "[$btn] mid-hold pressed=false — override window not honoured"
+            }
+            if ($mid.$btn.count -ne ($before + 1)) {
+                throw "[$btn] count didn't increment: was $before, now $($mid.$btn.count)"
+            }
+            Start-Sleep -Milliseconds 1800
+            $after = Console-Body "?keys"
+            if ($after.$btn.pressed) {
+                throw "[$btn] release didn't fire — synth window stuck"
+            }
         }
         return $true
     }

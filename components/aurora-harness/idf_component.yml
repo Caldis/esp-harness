@@ -6,10 +6,10 @@
 ##   - opt-in default command set (?stat / scene / tap / swipe / ?dump)
 ##   - toast + progress overlay primitives
 ##
-## Today (v1.4) this component is not yet on the IDF Component Registry.
-## Vendor it via path:
+## This component is not yet on the IDF Component Registry. Vendor it
+## via path:
 ##
-##   list(APPEND EXTRA_COMPONENT_DIRS path/to/esp32-harness-showcase/components)
+##   list(APPEND EXTRA_COMPONENT_DIRS path/to/esp-harness/components)
 ##
 ## After registry publication (planned, no ETA), the same component will
 ## be reachable via:
@@ -23,11 +23,11 @@
 version: "1.4.0"
 description: |
   Reusable console protocol + LVGL scene framework for AI-driven
-  ESP32 dev loops. Used by esp32-harness-showcase (the reference
-  firmware) and the esp32-harness-toolkit Python CLI.
+  ESP32 dev loops. Lives in the esp-harness monorepo alongside the
+  Aurora reference firmware and the esp-harness Python CLI.
 
-url: https://github.com/Caldis/esp32-harness-showcase/tree/master/components/aurora-harness
-issues: https://github.com/Caldis/esp32-harness-showcase/issues
+url: https://github.com/Caldis/esp-harness/tree/master/components/aurora-harness
+issues: https://github.com/Caldis/esp-harness/issues
 license: "MIT"
 
 ## Supported chip targets — board-agnostic but currently only field-tested

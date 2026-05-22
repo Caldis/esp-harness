@@ -183,9 +183,11 @@ def _check_serial_port() -> dict:
 
 
 def _check_harness_component() -> dict:
-    """Locate components/aurora-harness/. In the v1.5 monorepo it's a
-    peer at <root>/components/aurora-harness/; legacy layouts had it as
-    a sibling repo (esp32-harness-showcase/components/aurora-harness)."""
+    """Locate components/aurora-harness/. In the v1.5+ monorepo it's a
+    peer at <root>/components/aurora-harness/. Pre-v1.5 it lived as a
+    sibling repo (the now-archived esp32-harness-showcase); the
+    fallback probe is kept for users still on that layout, but it
+    will not exist on any current install."""
     toolkit_root  = Path(__file__).resolve().parents[3]    # tools/esp-harness/
     monorepo_root = toolkit_root.parents[1]                # esp-harness/
 
@@ -197,7 +199,10 @@ def _check_harness_component() -> dict:
                 "required": False,
                 "note": f"monorepo layout — auto-detect from {monorepo_root}"}
 
-    # Legacy v1.3 sibling layout
+    # Legacy v1.3 sibling layout (archived repo). Kept as a graceful
+    # fallback so users with stale checkouts get a "found at legacy
+    # path" rather than "missing". Anyone landing here today should
+    # migrate to the monorepo layout.
     legacy_sibling = toolkit_root.parent / "esp32-harness-showcase" / "components" / "aurora-harness"
     if legacy_sibling.exists():
         return {"name": "aurora-harness", "status": "ok",

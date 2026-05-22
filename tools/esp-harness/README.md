@@ -62,7 +62,7 @@ Creates a venv at `.venv/`, installs the package editable, and adds an
 ```powershell
 esp-harness --version              # 0.1.0
 esp-harness port detect            # COM9
-esp-harness build --project D:\Code\esp32-harness-showcase --json
+esp-harness build --project D:\Code\esp-harness\examples\aurora --json
 ```
 
 ## Architecture
@@ -90,8 +90,8 @@ src/esp_harness/
 
 The firmware-side counterpart (the device must implement `?dump`, `tap`,
 `?stat` over a console line protocol for tap injection and screenshot
-to work) lives in the companion repo
-[`esp32-harness-showcase/main/harness/`](https://github.com/Caldis/esp32-harness-showcase/tree/master/main/harness).
+to work) lives in this monorepo at
+[`examples/aurora/main/harness/`](../../examples/aurora/main/harness/).
 
 ## The AI loop, summarised
 
@@ -127,7 +127,7 @@ esp-harness monitor --port COM --seconds 10    # "what does it say now?"
 ## See also
 
 * [`AGENT.md`](./AGENT.md) — the AI manual (full JSON schemas, exit codes, workflows)
-* [companion showcase: Aurora](https://github.com/Caldis/esp32-harness-showcase) — generative-art demo that stress-tests the toolkit
+* [Aurora reference firmware](../../examples/aurora/) — the 20-scene demo that exercises every toolkit surface
 
 ## License
 

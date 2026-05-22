@@ -54,7 +54,11 @@ $venvHarness = Join-Path $venv 'Scripts\esp-harness.exe'
 Write-Host "[esp-harness] upgrading pip + installing package..." -ForegroundColor Cyan
 & $venvPython -m pip install --upgrade pip --quiet
 if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed" }
-& $venvPython -m pip install -e $root --quiet
+# Install with the [test] extras so `esp-harness test` works
+# out-of-the-box and `tools/smoke.ps1` reaches its full 21/21
+# (without test extras, pytest is missing and smoke gates at 20/21).
+# Round-4 subagent flagged the gap: fresh-clone smoke was 19/20.
+& $venvPython -m pip install -e "$root[test]" --quiet
 if ($LASTEXITCODE -ne 0) { throw "package install failed" }
 
 if (-not (Test-Path $venvHarness)) {

@@ -92,6 +92,17 @@ static void keys_task(void *arg)
          * resumes reflecting the GPIO. */
         if (now_ticks >= s_synth_boot_until) s_state.boot_pressed = boot;
         if (now_ticks >= s_synth_user_until) s_state.user_pressed = user;
+        /* pwr override: when the window expires we DON'T have a fresh
+         * "real" value to fall back on (PMIC PWRKEY events are level-
+         * sensed via IRQ_STATUS_2 below, applied conditionally only
+         * when a real edge fires). So on expiry we explicitly drop
+         * the synth's pressed=true back to false. Round-4 subagent
+         * caught this — without the explicit drop, the level stayed
+         * stuck at true forever. */
+        if (now_ticks >= s_synth_pwr_until && s_synth_pwr_until != 0) {
+            s_state.pwr_pressed = false;
+            s_synth_pwr_until = 0;
+        }
 
         /* Diagnostic: log any non-zero IRQ status the first time we
          * see one, across all three banks. Helps identify which bit
@@ -124,9 +135,19 @@ static void keys_task(void *arg)
                     s_state.pwr_count++;
                 }
                 /* `pressed` reflects "currently held" — positive edge
-                 * sets, negative edge clears. */
-                if (evt & (1u << 5)) s_state.pwr_pressed = true;
-                if (evt & (1u << 4)) s_state.pwr_pressed = false;
+                 * sets, negative edge clears. If a synth override is
+                 * active we MUST NOT let a stray PMIC bit (e.g. a
+                 * latched negative-edge from boot, or noise on the
+                 * PWRON line) clear the synthesised press. The override
+                 * window owns the level until it expires. */
+                bool synth_active = (now_ticks < s_synth_pwr_until) &&
+                                    (s_synth_pwr_until != 0);
+                if (!synth_active) {
+                    if (evt & (1u << 5)) s_state.pwr_pressed = true;
+                    if (evt & (1u << 4)) s_state.pwr_pressed = false;
+                }
+                /* Always W1C the bits so the next real edge isn't
+                 * masked by stale flags. */
                 pmic_write_u8(REG_IRQ_STATUS_2, evt);
             }
         }

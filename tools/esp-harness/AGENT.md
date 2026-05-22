@@ -236,8 +236,9 @@ common AI workflow ("inject N taps and capture what the device says"), use
 
 Pull a PNG of the device's framebuffer over the console. Needs firmware
 support: a `?dump` command that emits base64-encoded RGB565. See
-[esp32-harness-showcase's `harness_commands.c`](https://github.com/Caldis/esp32-harness-showcase/blob/master/main/harness/harness_commands.c)
-for the canonical implementation — copy it into new projects.
+[Aurora's `harness_commands.c`](https://github.com/Caldis/esp-harness/blob/master/examples/aurora/main/harness/harness_commands.c)
+for the canonical consumer; the implementation lives in
+[`aurora-harness/src/screenshot.c`](https://github.com/Caldis/esp-harness/blob/master/components/aurora-harness/src/screenshot.c).
 
 ```bash
 esp-harness screenshot --out check.png --size 128 --json
@@ -261,8 +262,9 @@ The default `--size 128` is the sweet spot because (a) it's below the
 USB-CDC long-burst danger zone, and (b) at 4 s it finishes between
 typical ESP_LOG heartbeats (10 s).
 
-**Behind the scenes** (it took 4 layers of fix to get here — see
-[showcase KNOWN_ISSUES § 5](https://github.com/Caldis/esp32-harness-showcase/blob/master/KNOWN_ISSUES.md#5-dump--the-four-layer-screenshot-pipeline-post-mortem)):
+**Behind the scenes** (it took 4 layers of fix to get here — the
+historical post-mortem is preserved in the archived
+[`esp32-harness-showcase` KNOWN_ISSUES § 5](https://github.com/Caldis/esp32-harness-showcase/blob/master/KNOWN_ISSUES.md#5-dump--the-four-layer-screenshot-pipeline-post-mortem)):
 * firmware box-filter average (no rainbow speckle on AA edges)
 * host-side per-line base64 validation (drop interleaved ESP_LOG)
 * firmware composites `lv_layer_top` over the screen snapshot
@@ -441,7 +443,7 @@ regression really compared apples-to-apples or you forgot to flash.
 
 Don't try to do these with `esp-harness` yet — they're roadmapped:
 
-- **LVGL desktop simulator** — fast UI iteration without flashing. **Scaffold exists** at `esp32-harness-showcase/sim/` (v1.1 milestone) but the build is gated on installing SDL2 + a host C compiler — system-wide changes the user has to authorise. See `showcase/sim/README.md` for the install commands. Once it builds, the next step is `esp-harness sim snapshot --scenes ...` which doesn't exist yet but is straightforward (run binary, collect PNGs via `lv_snapshot_take`).
+- **LVGL desktop simulator** — fast UI iteration without flashing. Built at `examples/aurora/sim/` in the monorepo. Build is gated on installing SDL2 + a host C compiler — system-wide changes the user has to authorise. See `examples/aurora/sim/README.md` for the install commands. `esp-harness sim snapshot --scene N --out path.bmp` drives it.
 - **Webcam capture of the physical screen** — for final visual verification.
 - **Framebuffer dump over serial** — alternative to webcam; ~430 KB / capture.
 - **Touch event injection** — via a debug command in firmware (`tap X Y` over UART). (`tap` console cmd exists; toolkit wrapper still TODO.)
