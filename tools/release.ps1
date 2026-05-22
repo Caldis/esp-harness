@@ -65,7 +65,10 @@ if ($SkipSmoke) {
 # 2. Bump pyproject.toml::version.
 $pyproject = "$repoRoot\tools\esp-harness\pyproject.toml"
 $content = Get-Content $pyproject -Raw
-$pattern = '^version\s*=\s*"[^"]*"'
+# Multiline (?m) so ^ anchors to the start of each line, not just the
+# whole document. Without it the literal '^version = ...' never
+# matches a Get-Content -Raw blob and release.ps1 aborts at step 2.
+$pattern = '(?m)^version\s*=\s*"[^"]*"'
 if ($content -notmatch $pattern) {
     Die "couldn't find 'version = ...' line in $pyproject"
 }
