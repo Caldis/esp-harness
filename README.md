@@ -179,7 +179,7 @@ loop needs.
 
 | | |
 |---|---|
-| **Current release** | `v1.7.3` (2026-05-22) — round-4 falsification convergence. Pre-release [smoke gate](./tools/smoke.ps1) at 21/21 (6 host + 15 device). See [`CHANGELOG.md`](./CHANGELOG.md). Release process: [`RELEASING.md`](./RELEASING.md). |
+| **Current release** | `v1.7.4` (2026-05-22) — round-5 falsification convergence. Pre-release [smoke gate](./tools/smoke.ps1) at 22/22 (7 host + 15 device). See [`CHANGELOG.md`](./CHANGELOG.md). Release process: [`RELEASING.md`](./RELEASING.md). |
 | **Hardware tested** | Waveshare ESP32-S3-Touch-AMOLED-2.16 (Aurora demo). Other boards: bring-up clear from [`PORTING.md`](./components/aurora-harness/PORTING.md), PRs welcomed. |
 | **Component Registry** | aurora-harness `idf_component.yml` is registry-ready; published version pending. |
 | **CI** | GitHub Actions on every push / PR — sim diff against 13 host-renderable scenes (of 20 total) + 3 integration tests. |

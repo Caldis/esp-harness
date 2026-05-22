@@ -6,6 +6,68 @@ Repo-level milestones. Per-artifact changelogs live in:
 - [`tools/esp-harness/CHANGELOG.md`](./tools/esp-harness/CHANGELOG.md) (toolkit history; preserved from `esp32-harness-toolkit`)
 - [`examples/aurora/CHANGELOG.md`](./examples/aurora/CHANGELOG.md) (Aurora demo history)
 
+## [1.7.4] — 2026-05-22 (round-5 falsification pass)
+
+**Round-5 falsified v1.7.3.** Same Lesson 15 defect class (defensive
+patches must cover ALL entry points) caught a SECOND time — round-5
+found that `run --no-build`'s flash phase had its own `idf_runner`
+call without the MSys check, even though build phase + flash command
+were both fixed in v1.7.3.
+
+### Critical (R3-CRIT regression — 2nd sibling path)
+
+- **`esp-harness run --no-build` from Git Bash silently no-op'd.**
+  `idf.py` exits 0 with the MSys/Mingw refusal, `wrote_bytes:0`,
+  `verified:false`, but JSON reports `ok:true` and the composite
+  command finishes claiming success. `run.py` flash phase now
+  mirrors `flash.py`'s two-tier defence: substring match on the
+  refusal message AND `wrote_bytes==0 && rc==0` sanity gate.
+
+### Blocking
+
+- **`esp-harness run` lost `patches.apply_all()` retry logic.**
+  `build.py` auto-patches `waveshare__qmi8658` and retries on
+  `i2c_master` link failures; `run.py` did not. AI agent following
+  AGENT.md's "use `run` for one-shot iterations" hit BUILD_FAILED
+  on first call against a fresh checkout. Now run.py imports +
+  invokes `patches` with identical pre-build apply + post-failure
+  retry behaviour.
+- **`smoke.ps1` triple-trap case hardcoded `$aurora="D:\Code\esp-harness\examples\aurora"`.**
+  Round-5 caught it: any other-machine run tested the maintainer's
+  main dev tree, not the checked-out tree under test. Now uses
+  `$RepoRoot\examples\aurora`. Also extended the loop to cover the
+  `run --no-build` variant round-5 attacked.
+- **`smoke.ps1` pytest gate failed on fresh clones** because
+  `test_sim_diff_all_scenes_pass` correctly skips when the sim binary
+  isn't built (`2 passed, 1 skipped`), but smoke insisted on
+  `3 passed`. Now accepts the legitimate skip case; only `failed`
+  is hard-error.
+
+### Smoke gate
+
+**7/7 host cases green** (was 7/7 too, but the build/flash/run
+triple-trap case now exercises FOUR invocation forms including
+`run --no-build` — what previously slipped through is now locked in).
+
+### Convergence trajectory
+
+| Round | Mode | Critical | Released |
+|---|---|---|---|
+| Author E2E | — | 5 | v1.7.1 |
+| Subagent 1 | verify | 3 | v1.7.1.x |
+| Subagent 2 | verify | 3 | v1.7.1.x |
+| Subagent 3 | verify | 1 | v1.7.2 |
+| Subagent 4 | falsify | 2 (R3-regression + scaffold-rot) | v1.7.3 |
+| **Subagent 5** | **falsify + process audit** | **1 (R3-regression-2)** | **v1.7.4** |
+
+**Critical now 1 → ?**. Round-5's process audit found exactly the
+class of bug it predicted: previous round patched the file it knew
+about, missed the sibling code path. v1.7.4 enumerates ALL idf_runner
+entry points explicitly: build, flash, run-build-phase,
+run-flash-phase. Each gated separately in smoke.
+
+If a round-6 falsification finds zero critical, we've converged.
+
 ## [1.7.3] — 2026-05-22 (round-4 falsification pass)
 
 **Round-4 falsified the v1.7.2 release.** A convergence-verification
