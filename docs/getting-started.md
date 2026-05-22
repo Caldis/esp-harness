@@ -147,7 +147,7 @@ Just enough to be useful immediately; the full pedagogy is in
 
 ### Versioning
 
-- **Repo-level** (e.g. `v1.5.0`) is tagged on every milestone milestone.
+- **Repo-level** (e.g. `v1.7.1`) is tagged on every milestone.
 - **Component-level** (`components/aurora-harness/idf_component.yml`)
   follows the same number — they're released together for now.
 - **Toolkit-level** (`tools/esp-harness/pyproject.toml`) is independent

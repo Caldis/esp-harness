@@ -40,7 +40,7 @@ useful by grepping, *register it* (add it to `?help` and/or
 │   │      console_protocol + scene_framework +            │
 │   │      toast + default ?stat                           │
 │   ├── main/                           Aurora-specific:   │
-│   │      aurora_main + 19 scenes + peripheral commands   │
+│   │      aurora_main + 20 scenes + peripheral commands   │
 │   └── sim/                            host LVGL build:   │
 │          SDL2 entry + ESP-IDF stubs + mock peripherals   │
 │                                                          │

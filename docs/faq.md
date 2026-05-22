@@ -228,7 +228,9 @@ Three places hold version info:
 | `tools/esp-harness/pyproject.toml::version` | The CLI's contract | When CLI subcommands change |
 | Repo git tag (`vX.Y.Z`) | The monorepo as a whole | When you cut a release |
 
-Today all three are kept in sync (`1.5.0`). They may diverge later if
+Today repo tag and CLI are synced (`1.7.1` as of this writing); the
+component is on its own track (`1.4.0` last release, no public-API
+changes through v1.7 so no bump needed). They may diverge further as
 the component / CLI evolve at different paces.
 
 ## Can I contribute? How?
