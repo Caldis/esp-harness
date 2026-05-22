@@ -20,8 +20,11 @@
 extern "C" {
 #endif
 
-/* No-op locks. SDL backend uses LVGL's own thread safety. */
-static inline void bsp_display_lock(uint32_t timeout_ms)   { (void)timeout_ms; }
+/* No-op locks — SDL backend uses LVGL's own thread safety. Returns
+ * `true` to match the signature aurora-harness's bsp_iface.h declares
+ * (the void variant here was a long-standing UB-leaning mismatch
+ * that worked only because callers discarded the return). */
+static inline bool bsp_display_lock(uint32_t timeout_ms)   { (void)timeout_ms; return true; }
 static inline void bsp_display_unlock(void)                {}
 
 /* Brightness is a no-op; we log it instead so scene_glow visibly works. */
