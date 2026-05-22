@@ -147,9 +147,11 @@ static void echo_init(scene_t *s, lv_obj_t *parent)
 }
 
 scene_t scene_echo = {
-    .id           = "echo",
-    .display_name = "VI. Echo",
-    .accent       = LV_COLOR_MAKE(0x4F, 0xD1, 0xC5),
-    .init         = echo_init,
+    .id            = "echo",
+    .display_name  = "VI. Echo",
+    .accent        = LV_COLOR_MAKE(0x4F, 0xD1, 0xC5),
+    .description   = "Long-press plays a 400 Hz tone; 3 concentric ripples animate the press",
+    .tags          = "audio,speaker,interactive,animation",
+    .init          = echo_init,
     .on_long_press = echo_long_press,
 };

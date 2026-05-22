@@ -75,5 +75,7 @@ scene_t scene_grid = {
     .id           = "grid",
     .display_name = "II. Grid",
     .accent       = LV_COLOR_MAKE(0xE0, 0xB2, 0x5C),
+    .description  = "Twelve hairline radials (compass rose), warm amber, static",
+    .tags         = "display,static,art",
     .init         = grid_init,
 };

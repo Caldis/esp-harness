@@ -38,7 +38,18 @@ def esp_harness():
 
     def run(*cli_args, timeout: float = 60.0) -> tuple[int, dict | None, str]:
         cmd = [str(VENV_PY), "-m", "esp_harness", *cli_args, "--json"]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        # The CLI emits UTF-8; pin the subprocess decode to match. On a
+        # Windows locale (cp936 / gbk) the default `text=True` decode
+        # crashes when the CLI prints Chinese device descriptions or
+        # other non-ASCII content.
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+        )
         parsed: dict | None = None
         try:
             # Take the last non-empty line as JSON (some commands print

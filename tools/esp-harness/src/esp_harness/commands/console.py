@@ -81,6 +81,26 @@ def add_subparser(sub, add_common_flags) -> None:
         "possible. Used by manifest-style commands (`?help json` → TAG=HELP, "
         "`scene list` → TAG=SCENES).",
     )
+    p.add_argument(
+        "--wait-evt",
+        metavar="REGEX",
+        default=None,
+        help="After OK:/ERR: arrives, keep listening for an EVT whose body "
+        "matches REGEX (case-sensitive). First match is reported in the "
+        "JSON output's `matched_evt` field. Use this for async commands "
+        "whose result lands as an EVT after the sync ack — e.g. "
+        "`--cmd 'tap 233 233' --wait-evt '^tap_hit'`, or "
+        "`--cmd '?ota download url=...' --wait-evt 'OTA progress=100'`. "
+        "Without this flag, EVTs that arrive after OK: are lost.",
+    )
+    p.add_argument(
+        "--evt-timeout",
+        type=float,
+        default=2.0,
+        metavar="SECS",
+        help="Seconds to wait for --wait-evt after OK: arrives (default 2). "
+        "Ignored when --wait-evt isn't set.",
+    )
     add_common_flags(p)
 
 
@@ -209,6 +229,8 @@ def run(args: argparse.Namespace, output: Output) -> int:
                 args.cmd,
                 timeout=args.timeout,
                 expect_payload=args.payload,
+                wait_evt=args.wait_evt,
+                evt_timeout=args.evt_timeout,
             )
     except Exception as e:
         msg = str(e)
@@ -246,6 +268,11 @@ def run(args: argparse.Namespace, output: Output) -> int:
         "reply": parsed,
         "elapsed_ms": elapsed_ms,
     }
+    if args.wait_evt is not None:
+        payload["wait_evt"] = args.wait_evt
+        payload["matched_evt"] = resp.matched_evt
+        payload["evt_wait_ms"] = resp.evt_wait_ms
+        payload["evt_matched"] = resp.matched_evt is not None
     if resp.events:
         payload["events"] = resp.events
     if resp.other_lines:

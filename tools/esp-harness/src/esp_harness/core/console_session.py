@@ -39,6 +39,8 @@ class Response:
     events: list[str] = field(default_factory=list)
     other_lines: list[str] = field(default_factory=list)
     raw: str = ""            # everything we observed, joined
+    matched_evt: str | None = None   # the EVT body that matched wait_evt (if any)
+    evt_wait_ms: int = 0     # ms actually spent waiting for the named EVT
 
 
 class ConsoleSession:
@@ -125,12 +127,22 @@ class ConsoleSession:
         *,
         timeout: float = 5.0,
         expect_payload: str | None = None,
+        wait_evt: str | None = None,
+        evt_timeout: float = 2.0,
     ) -> Response:
         """Send `cmd` (newline appended), read until OK:/ERR: arrives.
 
         If `expect_payload` is given, the OK reply is followed by a
         `<TAG>_BEGIN ... <TAG>_END` payload block; the bytes between are
         collected and returned in `Response.payload`.
+
+        If `wait_evt` is given (regex pattern), the session keeps reading
+        for up to `evt_timeout` additional seconds AFTER the OK:/ERR: line,
+        scanning incoming EVT lines for a body matching the pattern.
+        First match populates `Response.matched_evt` and ends the read.
+        Use this for async commands whose payload lands as an EVT after
+        the synchronous acknowledgement (e.g. `tap` → `tap_hit`,
+        `?ota download` → `OTA progress=...`).
         """
         assert self._ser is not None
         # send
@@ -144,9 +156,18 @@ class ConsoleSession:
         in_payload = False
         payload_tag = expect_payload
         raw_lines: list[str] = []
+        ack_seen = False  # OK:/ERR: arrived
+        evt_re = re.compile(wait_evt) if wait_evt else None
+        evt_wait_start: float | None = None
 
         for ln in self._iter_lines(deadline):
             if ln == "\0":  # idle
+                # Once we have the ack and are only waiting for the EVT,
+                # check whether the EVT deadline has elapsed even when
+                # no new bytes arrived.
+                if ack_seen and evt_re is not None and evt_wait_start is not None:
+                    if time.monotonic() - evt_wait_start >= evt_timeout:
+                        break
                 continue
             raw_lines.append(ln)
 
@@ -155,7 +176,10 @@ class ConsoleSession:
                 if m_end and (payload_tag is None or m_end.group(1) == payload_tag):
                     in_payload = False
                     # consume any trailing newline already handled
-                    break
+                    if evt_re is None:
+                        break
+                    # Otherwise fall through — we still need to wait for EVT.
+                    continue
                 # body line (base64 or ASCII)
                 resp.payload += ln.encode("ascii", errors="replace") + b"\n"
                 continue
@@ -164,20 +188,39 @@ class ConsoleSession:
             if m:
                 resp.ok = True
                 resp.text = m.group(1)
-                if expect_payload is None:
+                ack_seen = True
+                if expect_payload is None and evt_re is None:
                     break
-                # else continue to look for BEGIN
+                # else continue: look for BEGIN and/or wait for EVT.
+                if evt_re is not None:
+                    # Switch to the (usually shorter) EVT-only deadline so
+                    # we don't sit on the parent timeout for no reason.
+                    evt_wait_start = time.monotonic()
+                    deadline = min(deadline, evt_wait_start + evt_timeout)
                 continue
 
             m = _ERR_RE.match(ln)
             if m:
                 resp.ok = False
                 resp.text = m.group(1)
+                ack_seen = True
+                # ERR short-circuits: an async EVT after an error is rare
+                # and the caller probably wants to know about the failure
+                # immediately. If a real use case for waiting after ERR
+                # shows up, add a flag.
                 break
 
             m = _EVT_RE.match(ln)
             if m:
-                resp.events.append(m.group(1))
+                body = m.group(1)
+                resp.events.append(body)
+                if evt_re is not None and ack_seen and resp.matched_evt is None:
+                    if evt_re.search(body):
+                        resp.matched_evt = body
+                        if evt_wait_start is not None:
+                            resp.evt_wait_ms = int(
+                                (time.monotonic() - evt_wait_start) * 1000)
+                        break
                 continue
 
             m_begin = _BEGIN_RE.match(ln)

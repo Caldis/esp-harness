@@ -225,9 +225,11 @@ static void spectrum_init(scene_t *s, lv_obj_t *parent)
 }
 
 scene_t scene_spectrum = {
-    .id           = "spectrum",
-    .display_name = "IX. Spectrum",
-    .accent       = LV_COLOR_MAKE(0xA9, 0xC8, 0xDC),
-    .init         = spectrum_init,
+    .id            = "spectrum",
+    .display_name  = "IX. Spectrum",
+    .accent        = LV_COLOR_MAKE(0xA9, 0xC8, 0xDC),
+    .description   = "WiFi scan: long-press triggers, APs plotted as polar dots — angle=channel, radius∝1/RSSI",
+    .tags          = "wifi,radio,interactive,data-viz",
+    .init          = spectrum_init,
     .on_long_press = spectrum_long_press,
 };

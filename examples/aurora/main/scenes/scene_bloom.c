@@ -65,5 +65,7 @@ scene_t scene_bloom = {
     .id           = "bloom",
     .display_name = "III. Bloom",
     .accent       = LV_COLOR_MAKE(0xE8, 0x9B, 0xB5),
+    .description  = "Fibonacci phyllotaxis seed pattern, soft rose, static",
+    .tags         = "display,static,art,math",
     .init         = bloom_init,
 };

@@ -208,23 +208,30 @@ isn't broken.
 
 ---
 
-## Lesson 9 — `tap`/`swipe` EVTs are fire-and-forget
+## Lesson 9 — `tap`/`swipe` EVTs are fire-and-forget — RESOLVED in v1.7.1
 
-**What broke** (in framework, not v1.7 specifically): we cannot
+**What broke** (in framework, not v1.7 specifically): we could not
 verify from the host that `tap 233 233` actually landed on a widget.
 The firmware emits `EVT: tap_hit x=... y=... obj=0x...` but it
 arrives AFTER `OK: tap dispatched`, and the host's `console --cmd`
-session has already closed.
+session had already closed.
 
-**Gap**: the only way to capture lagging EVTs is `console --repl`
-(interactive) or `monitor --until PATTERN` (but monitor and console
-can't share the port).
+**Fix** (v1.7.1 post-release follow-up): added `--wait-evt REGEX
+--evt-timeout SECS` to `console --cmd`. The session stays open
+until OK:/ERR: AND the named EVT (or timeout) arrives. The matched
+EVT body lands in JSON output's `matched_evt` field. Smoke gate
+`tap --wait-evt captures tap_hit (L9 regression)` locks it in.
 
-**Process change for v1.8**: add `--wait-evt PATTERN --evt-timeout MS`
-to `console --cmd`. The session stays open until `OK:/ERR:` AND the
-named EVT (or timeout) arrives. Without this, async commands that
-emit progress (any tap, any future `OTA download`) are observable
-only by accident.
+**Usage**:
+```
+esp-harness console --cmd "tap 233 233" --wait-evt "^tap_hit" --evt-timeout 2
+esp-harness console --cmd "?ota download url=..." --wait-evt "OTA progress=100" --evt-timeout 60
+```
+
+**Rule**: every async command that emits progress / completion via
+EVT should be exercised with `--wait-evt` at least once in smoke
+testing. ERR short-circuits the EVT wait (no point sitting on an
+already-failed command).
 
 ---
 

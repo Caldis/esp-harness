@@ -10,8 +10,26 @@ Every subcommand module exposes:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import traceback
+
+# Force UTF-8 on Windows so unicode arrows / Chinese device names don't
+# render as mojibake (`?ping �� OK` etc.). PowerShell on a fresh user
+# session defaults to a legacy CP (cp936 / cp1252 / similar); the user
+# shouldn't have to know about chcp 65001 to get readable output.
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+    # Best-effort: ask cmd.exe / PowerShell to switch its code page.
+    # Failure is non-fatal — reconfigure above already covers most cases.
+    try:
+        os.system("chcp 65001 > NUL 2>&1")
+    except Exception:
+        pass
 
 from esp_harness import __version__
 from esp_harness.commands import audio as cmd_audio

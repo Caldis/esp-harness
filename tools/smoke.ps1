@@ -131,6 +131,18 @@ if ($SkipDevice) {
         if ($j.running.label -notmatch "^ota_[01]$") { throw "running=$($j.running.label) — partitions changed?" }
         return $true
     }
+    Test-Case "tap --wait-evt captures tap_hit (L9 regression)" {
+        # Use the toolkit directly to keep the assertion JSON-shaped.
+        Console-Body "scene halo" | Out-Null
+        Start-Sleep -Milliseconds 300
+        $j = & $py -m esp_harness console --cmd "tap 233 233" --port $Port `
+              --wait-evt "^tap_hit" --evt-timeout 2 --json 2>&1 |
+              Select-Object -Last 1 | ConvertFrom-Json
+        if (-not $j.evt_matched) {
+            throw "tap_hit EVT not captured (matched_evt=$($j.matched_evt))"
+        }
+        return $true
+    }
     Test-Case "scene system → ?stat scene_id == system" {
         Console-Body "scene system" | Out-Null
         Start-Sleep -Milliseconds 400

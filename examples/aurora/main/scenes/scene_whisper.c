@@ -221,9 +221,11 @@ static void whisper_init(scene_t *s, lv_obj_t *parent)
 }
 
 scene_t scene_whisper = {
-    .id           = "whisper",
-    .display_name = "VIII. Whisper",
-    .accent       = LV_COLOR_MAKE(0x8A, 0x8A, 0xD8),
-    .init         = whisper_init,
+    .id            = "whisper",
+    .display_name  = "VIII. Whisper",
+    .accent        = LV_COLOR_MAKE(0x8A, 0x8A, 0xD8),
+    .description   = "BLE observer: long-press 2s scan, unique devices plotted by MAC-hash angle + RSSI radius",
+    .tags          = "ble,radio,interactive,data-viz",
+    .init          = whisper_init,
     .on_long_press = whisper_long_press,
 };

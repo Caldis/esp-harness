@@ -253,11 +253,13 @@ static void tone_on_hide(scene_t *s)
 }
 
 scene_t scene_tone = {
-    .id           = "tone",
-    .display_name = "XIII. Tone",
-    .accent       = LV_COLOR_MAKE(0xF8, 0xC7, 0x7E),
-    .init         = tone_init,
-    .on_show      = tone_on_show,
-    .on_hide      = tone_on_hide,
+    .id            = "tone",
+    .display_name  = "XIII. Tone",
+    .accent        = LV_COLOR_MAKE(0xF8, 0xC7, 0x7E),
+    .description   = "Speaker-only sine tone; long-press plays, BOOT/USER adjust volume",
+    .tags          = "audio,speaker,interactive,playback",
+    .init          = tone_init,
+    .on_show       = tone_on_show,
+    .on_hide       = tone_on_hide,
     .on_long_press = tone_long_press,
 };

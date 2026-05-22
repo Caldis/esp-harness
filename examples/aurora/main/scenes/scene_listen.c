@@ -362,11 +362,13 @@ static void listen_on_hide(scene_t *s)
 
 scene_t scene_listen = {
     .id           = "listen",
-    .display_name = "XII. Listen",
-    .accent       = LV_COLOR_MAKE(0xE0, 0x88, 0x8A),
-    .init         = listen_init,
-    .on_show      = listen_on_show,
-    .on_hide      = listen_on_hide,
+    .display_name  = "XII. Listen",
+    .accent        = LV_COLOR_MAKE(0xE0, 0x88, 0x8A),
+    .description   = "Press-and-hold mic capture (max 10s), releases plays back; BOOT/USER adjust volume",
+    .tags          = "audio,mic,speaker,interactive,loopback",
+    .init          = listen_init,
+    .on_show       = listen_on_show,
+    .on_hide       = listen_on_hide,
     .on_long_press = listen_long_press,
-    .on_release   = listen_release,
+    .on_release    = listen_release,
 };

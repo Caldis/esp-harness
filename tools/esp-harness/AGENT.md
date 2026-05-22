@@ -500,6 +500,16 @@ esp-harness flash --project P --port COM --json --quiet       # upload
 esp-harness monitor --port COM --seconds N --until R --json   # listen
 esp-harness run --project P --seconds N --until R --json --quiet  # all of the above
 
+# console — the generic transport. JSON in / JSON out.
+esp-harness console --cmd "?stat" --port COM --json
+esp-harness console --cmd "wifi connect ssid=\"My AP\" pass=xxx" --port COM --json
+
+# async commands: wait for the EVT that lands AFTER the OK: ack.
+esp-harness console --cmd "tap 233 233" --port COM \
+                    --wait-evt "^tap_hit" --evt-timeout 2 --json
+esp-harness console --cmd "?ota download url=https://..." --port COM \
+                    --wait-evt "OTA progress=100" --evt-timeout 60 --json
+
 # always check $? / exit code first; then parse JSON.
 ```
 

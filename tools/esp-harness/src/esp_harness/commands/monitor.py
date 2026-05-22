@@ -42,7 +42,11 @@ def add_subparser(sub, add_common_flags) -> None:
     p.add_argument(
         "--until",
         default=None,
-        help="Regex pattern; exit as soon as accumulated output matches.",
+        help=(
+            "Regex pattern; exit as soon as accumulated output matches. "
+            "Substring matching by default (`ready` matches `already`); "
+            "for whole-word use `\\bready\\b`, for line-anchored use `^… $`."
+        ),
     )
     p.add_argument(
         "--quiet",

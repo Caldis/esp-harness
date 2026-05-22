@@ -58,17 +58,46 @@ def _check_cmake() -> dict:
 
 
 def _check_idf() -> dict:
-    """ESP-IDF via EIM: look for the activation script."""
+    """Detect ESP-IDF. Preference order:
+        1. EIM-installed PowerShell profile under C:\\Espressif\\tools\\ (Win)
+        2. IDF_PATH environment variable (any platform, manual install)
+        3. ~/esp/esp-idf/ or ~/esp-idf/ (Unix conventional location)
+    """
+    # 1. EIM profile (Windows, preferred — toolkit uses this directly).
     activate = list(Path("C:/Espressif/tools").glob("Microsoft.v*.PowerShell_profile.ps1"))
     if activate:
         latest = sorted(activate)[-1]
-        # Parse version from filename: Microsoft.v6.0.1.PowerShell_profile.ps1
         ver = latest.stem.split(".PowerShell")[0].lstrip("Microsoft.v")
         return {"name": "esp-idf", "status": "ok",
-                "path": str(latest), "version": ver, "required": True}
+                "path": str(latest), "version": ver, "required": True,
+                "via": "EIM"}
+    # 2. IDF_PATH env var (any platform).
+    idf_path = os.environ.get("IDF_PATH")
+    if idf_path and (Path(idf_path) / "tools" / "idf.py").is_file():
+        ver = "?"
+        version_file = Path(idf_path) / "version.txt"
+        if version_file.exists():
+            try:
+                ver = version_file.read_text().strip().lstrip("v")
+            except Exception:
+                pass
+        return {"name": "esp-idf", "status": "ok",
+                "path": idf_path, "version": ver, "required": True,
+                "via": "IDF_PATH",
+                "note": "toolkit auto-activation is Windows/EIM only; "
+                        "on other platforms run `. $IDF_PATH/export.sh` first"}
+    # 3. Conventional Unix install locations.
+    for candidate in [Path.home() / "esp" / "esp-idf",
+                      Path.home() / "esp-idf"]:
+        if (candidate / "tools" / "idf.py").is_file():
+            return {"name": "esp-idf", "status": "warn",
+                    "path": str(candidate), "required": True,
+                    "note": "found at conventional path but IDF_PATH not "
+                            "exported — set it or `. export.sh` first"}
     return {
         "name": "esp-idf", "status": "missing", "required": True,
-        "hint": "Install ESP-IDF via EIM: https://docs.espressif.com/projects/idf-im-ui/",
+        "hint": "Install via EIM (Win): https://docs.espressif.com/projects/idf-im-ui/  "
+                "OR install manually then `export IDF_PATH=~/esp/esp-idf`",
     }
 
 
@@ -123,10 +152,11 @@ def _check_sdl2() -> dict:
         "name": "sdl2", "status": "missing", "required": False,
         "note": "only needed for the desktop sim/ build",
         "hint": (
-            "Download SDL2-devel-*-mingw.zip from "
-            "https://github.com/libsdl-org/SDL/releases  and extract to "
-            "%USERPROFILE%\\scoop\\apps\\sdl2  (see "
-            "esp32-harness-showcase/sim/README.md for full setup)"
+            "Win: download SDL2-devel-*-mingw.zip from "
+            "https://github.com/libsdl-org/SDL/releases and extract to "
+            "%USERPROFILE%\\scoop\\apps\\sdl2 (or set SDL2_DIR).  "
+            "Linux/Mac: apt install libsdl2-dev | brew install sdl2.  "
+            "See examples/aurora/sim/INTEGRATION.md for full setup."
         ),
     }
 

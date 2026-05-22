@@ -441,11 +441,13 @@ static void vault_on_hide(scene_t *s)
 }
 
 scene_t scene_vault = {
-    .id           = "vault",
-    .display_name = "VII. Vault",
-    .accent       = LV_COLOR_MAKE(0xE6, 0xC7, 0x7A),
-    .init         = vault_init,
-    .on_show      = vault_on_show,
-    .on_hide      = vault_on_hide,
+    .id            = "vault",
+    .display_name  = "VII. Vault",
+    .accent        = LV_COLOR_MAKE(0xE6, 0xC7, 0x7A),
+    .description   = "SD card status + management: mount/unmount/probe/format; auto-hot-plug poll",
+    .tags          = "sdcard,storage,interactive",
+    .init          = vault_init,
+    .on_show       = vault_on_show,
+    .on_hide       = vault_on_hide,
     .on_long_press = vault_long_press,
 };
