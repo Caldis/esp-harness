@@ -228,10 +228,11 @@ Three places hold version info:
 | `tools/esp-harness/pyproject.toml::version` | The CLI's contract | When CLI subcommands change |
 | Repo git tag (`vX.Y.Z`) | The monorepo as a whole | When you cut a release |
 
-Today repo tag and CLI are synced (`1.7.1` as of this writing); the
-component is on its own track (`1.4.0` last release, no public-API
-changes through v1.7 so no bump needed). They may diverge further as
-the component / CLI evolve at different paces.
+Today repo tag and CLI are synced (always — enforced by
+`tools/smoke.ps1`'s three-way version case + `tools/release.ps1`'s
+sanity gate); the component is on its own track (`1.4.0` last release,
+no public-API changes through v1.7 so no bump needed). They may
+diverge further as the component / CLI evolve at different paces.
 
 ## Can I contribute? How?
 
