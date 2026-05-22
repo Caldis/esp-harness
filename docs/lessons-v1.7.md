@@ -250,6 +250,106 @@ inline secrets in chat.
 
 ---
 
+## Lesson 11 — `X and (list or list)` returns the operand, not a bool
+
+**What broke** (round-2 adversarial subagent finding): `manifest --port
+COM9 --json` returned `device.available` as an 18-element command list
+instead of `true`. AI agents branching on `if mfst["device"]["available"]`
+silently got a truthy list — looked fine until something downstream
+indexed into a "bool" and crashed in the agent.
+
+**Root cause**: `dm.fetched_ok = dm.fetch_error is None and (dm.commands
+or dm.scenes)`. Python's `and` returns the operand, not a bool, so when
+both sides are truthy the result is the last operand (the list itself).
+
+**Fix**: wrap the whole expression with `bool(...)`. One character, but
+the failure mode was completely silent until the subagent checked the
+type of the field.
+
+**Process change**: any field that goes into a JSON contract document
+(manifest, doctor, build result, etc.) must be type-coerced explicitly:
+`bool(...)`, `int(...)`, `str(...)`. Truthiness is fine inside Python;
+JSON contracts need real types.
+
+**Smoke gate**: `manifest.device.available is a real bool (R2-bug
+regression)` — runs against a connected device, asserts `isinstance bool`.
+
+---
+
+## Lesson 12 — Async EVT can arrive BEFORE the synchronous ack
+
+**What broke** (round-2): the v1.7.1 `--wait-evt REGEX` feature
+correctly captured `tap_hit` (which is emitted by an `lv_async_call`
+that runs after the OK: reply), but missed `scene_changed` (which is
+emitted synchronously *during* the `cmd_scene` handler, before
+`console_reply_ok`). The original implementation gated EVT-regex
+matching on `ack_seen`, so EVTs that arrived in the bytes before OK:
+landed in `resp.events` but never tested.
+
+**Why we missed it**: the L9 fix was driven by `tap` — for which the
+async/sync timing happens to be "EVT after ack." Generalising to "any
+async progress emission" introduced a hidden assumption.
+
+**Fix**: every EVT runs through the regex regardless of ack state. If a
+match arrives pre-ack, save it but keep reading so `resp.ok` ends up
+correctly populated from the OK: line. If post-ack, the existing
+early-break logic applies.
+
+**Rule**: ack/EVT ordering is firmware-implementation-dependent. Host
+parsers must never assume "EVT can only arrive after OK" — that's a
+correctness violation, not an optimisation.
+
+**Smoke gate**: `scene next --wait-evt captures pre-ack EVT (R2-bug
+regression)`.
+
+---
+
+## Lesson 13 — Scaffold should tell users the truth about what works
+
+**What broke** (round-2): `esp-harness new my-thing --component-source
+vendor` printed `cd my-thing && esp-harness build` as the next-step
+hint — but vendored mode doesn't include a BSP, so the build was
+guaranteed to fail. Similarly `--component-source depend` printed
+"build" even though the registry doesn't host aurora-harness yet.
+
+**Root cause**: the success-message template was written once for the
+default mode and reused. Each mode has a different ready state.
+
+**Fix**: per-mode `next_steps` text. `link` says "cd / build / flash"
+(works as-is). `vendor` says "before build, copy the BSP into
+components/" with the exact path. `depend` says "registry-not-published,
+use link or vendor instead".
+
+**Rule**: success messages must be honest about what the user can
+immediately do next. If the next step will fail, say so before they
+try it. "Build" is not a generic placeholder.
+
+**Process change**: any scaffolder / template emitter that prints a
+"next steps" block must enumerate the modes it supports and gate each
+on whether the resulting project is actually buildable.
+
+---
+
+## Lesson 14 — Version literals always drift; pin to source
+
+**What broke** (round-2): three places held the literal `1.5.0` while
+the project had moved to `1.7.1`: root `README.md` "Current release"
+line, `tools/esp-harness/README.md` version badge, and the scaffolded
+project's `idf_component.yml` aurora-harness pin (`^1.5.0`).
+
+**Root cause**: human discipline. Each release would need someone to
+remember to bump three+ unrelated files.
+
+**Fix**: the scaffolder pin now reads `__version__` at scaffold time
+via `_pinnable_version()`. The READMEs were bumped to 1.7.1; the
+smoke gate now asserts `--version != "1.5.0"` so a future drift
+trips the gate.
+
+**Rule**: never hand-maintain a version literal in source. Either
+substitute at build/install time, or assert in CI that it tracks.
+
+---
+
 ## Convergence summary (v1.7.0 → v1.7.1)
 
 | Defect | Lesson | Severity | Detected by |

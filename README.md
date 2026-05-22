@@ -169,10 +169,10 @@ loop needs.
 
 | | |
 |---|---|
-| **Current release** | `v1.5.0` (2026-05-21) — monorepo migration from two predecessor repos. |
+| **Current release** | `v1.7.1` (2026-05-22) — quality-convergence wave. Pre-release [smoke gate](./tools/smoke.ps1) at 14/14 (host + device). See [`CHANGELOG.md`](./CHANGELOG.md). |
 | **Hardware tested** | Waveshare ESP32-S3-Touch-AMOLED-2.16 (Aurora demo). Other boards: bring-up clear from [`PORTING.md`](./components/aurora-harness/PORTING.md), PRs welcomed. |
 | **Component Registry** | aurora-harness `idf_component.yml` is registry-ready; published version pending. |
-| **CI** | GitHub Actions on every push / PR — sim diff against 13 golden scenes + 3 integration tests. |
+| **CI** | GitHub Actions on every push / PR — sim diff against 13 host-renderable scenes (of 20 total) + 3 integration tests. |
 | **License** | MIT. |
 | **Predecessors** | [`esp32-harness-showcase`](https://github.com/Caldis/esp32-harness-showcase) (v1.0-v1.4) and [`esp32-harness-toolkit`](https://github.com/Caldis/esp32-harness-toolkit) (v1.0) — kept as archives. |
 

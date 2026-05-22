@@ -87,6 +87,18 @@ Test-Case "manifest exposes >= 17 toolkit cmds" {
     return $true
 }
 
+Test-Case "version triangulation (--version == manifest != 1.5.0)" {
+    $cli_ver = (& $py -m esp_harness --version 2>&1) -join " " | ForEach-Object { ($_ -split " ")[-1] }
+    $man = Json-Of @("manifest","--no-device")
+    if ($cli_ver -ne $man.toolkit_version) {
+        throw "cli=$cli_ver != manifest=$($man.toolkit_version)"
+    }
+    if ($cli_ver -eq "1.5.0") {
+        throw "stuck on stale 1.5.0 — __init__.py drifted from pyproject again?"
+    }
+    return $true
+}
+
 if ($SkipDevice) {
     Write-Host ""
     Write-Host "── device gates skipped (--SkipDevice) ─────────────────────────"
@@ -140,6 +152,35 @@ if ($SkipDevice) {
               Select-Object -Last 1 | ConvertFrom-Json
         if (-not $j.evt_matched) {
             throw "tap_hit EVT not captured (matched_evt=$($j.matched_evt))"
+        }
+        return $true
+    }
+    Test-Case "scene next --wait-evt captures pre-ack EVT (R2-bug regression)" {
+        Console-Body "scene halo" | Out-Null
+        Start-Sleep -Milliseconds 300
+        # scene_changed EVT fires DURING cmd_scene's call to scene_fw_show,
+        # i.e. before the OK: reply. Round-2 subagent caught the original
+        # ack_seen gate dropping these on the floor.
+        $j = & $py -m esp_harness console --cmd "scene next" --port $Port `
+              --wait-evt "scene_changed" --evt-timeout 2 --json 2>&1 |
+              Select-Object -Last 1 | ConvertFrom-Json
+        if (-not $j.evt_matched) {
+            throw "scene_changed EVT (pre-ack) not captured — pre-ack gate back?"
+        }
+        return $true
+    }
+    Test-Case "manifest.device.available is a real bool (R2-bug regression)" {
+        # `dm.fetched_ok = X and (list or list)` returns the operand —
+        # round-2 subagent saw an 18-element command list leak through
+        # as `device.available`. Re-test with a connected device.
+        $j = & $py -m esp_harness manifest --port $Port --json 2>&1 |
+             Select-Object -Last 1 | ConvertFrom-Json
+        $a = $j.device.available
+        if ($a -isnot [bool]) {
+            throw "device.available is not a bool: type=$($a.GetType().Name) value=$a"
+        }
+        if ($a -ne $true) {
+            throw "device available, but value=false (device queried correctly?)"
         }
         return $true
     }

@@ -1,7 +1,7 @@
 # esp-harness (CLI)
 
 [![pkg](https://img.shields.io/badge/pkg-esp--harness-b8431a)](./pyproject.toml)
-[![version](https://img.shields.io/badge/version-1.5.0-1c1814)](./pyproject.toml)
+[![version](https://img.shields.io/badge/version-1.7.1-1c1814)](./pyproject.toml)
 [![python](https://img.shields.io/badge/python-≥3.10-1c1814)](./pyproject.toml)
 [![tests](https://img.shields.io/badge/tests-3%2F3_passing-344a36)](./tests/)
 [![cmds](https://img.shields.io/badge/cmds-17-1c1814)](./src/esp_harness/commands/)

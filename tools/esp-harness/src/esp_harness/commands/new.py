@@ -442,6 +442,20 @@ def _c_safe_name(name: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in name)
 
 
+def _pinnable_version() -> str:
+    """Toolkit's `MAJOR.MINOR.0` form, suitable for `^X.Y.0` registry
+    pins. We bind the depend-mode aurora-harness pin to the toolkit's
+    current release line so the literal doesn't go stale across
+    releases. `^1.7.0` lets the consumer's registry pull any 1.7.x
+    (and per semver any 1.x ≥ 1.7) without an upstream code change.
+    """
+    from esp_harness import __version__
+    parts = __version__.split(".")
+    major = parts[0] if len(parts) >= 1 else "1"
+    minor = parts[1] if len(parts) >= 2 else "0"
+    return f"{major}.{minor}.0"
+
+
 def _detect_harness_root(override: Path | None) -> Path | None:
     """Walk up from this file to find the monorepo root."""
     if override:
@@ -597,7 +611,11 @@ def run(args: argparse.Namespace, output: Output) -> int:
             "\n"
             "dependencies:\n"
             "  lvgl/lvgl: \"^9.0\"\n"
-            "  caldis/aurora-harness: \"^1.5.0\"\n"
+            # Pin to the toolkit's current major+minor — once aurora-harness
+            # is published to the registry, the dep version tracks the
+            # toolkit's release line automatically. Avoids the stale
+            # `^1.5.0` literal that lingered through 1.7.x.
+            f"  caldis/aurora-harness: \"^{_pinnable_version()}\"\n"
             "  ## Add your board's BSP component dep here.\n"
         )
 
@@ -618,6 +636,39 @@ def run(args: argparse.Namespace, output: Output) -> int:
                            error=f"failed to copy aurora-harness into project: {e}")
             return GENERIC_ERROR
 
+    # Build hint varies by source mode — `link` builds cleanly out of
+    # the box (the default), the other two need user follow-up before
+    # `esp-harness build` will succeed. Telling the user to build
+    # immediately when we know it'll fail is a hostile UX.
+    if source == "link":
+        next_steps = (
+            f"scaffolded {cname} at {target} (source: link — BSP auto-wired)\n"
+            f"  cd {target}\n"
+            f"  esp-harness build         # ≈ 60s clean build\n"
+            f"  esp-harness flash"
+        )
+        next_steps_json = "build_ready"
+    elif source == "vendor":
+        next_steps = (
+            f"scaffolded {cname} at {target} (source: vendor — BSP NOT bundled)\n"
+            f"  ! Before `esp-harness build` will work, you must add a\n"
+            f"  ! board BSP. The generated README.md's \"Before your first\n"
+            f"  ! build\" section lists the three options. Quickest path:\n"
+            f"  cp -r {harness_root}\\boards\\esp32_s3_touch_amoled_2_16\n"
+            f"        {target}\\components\\\n"
+            f"  # then uncomment the BSP line in {target}\\main\\CMakeLists.txt"
+        )
+        next_steps_json = "needs_bsp_wiring"
+    else:  # depend
+        next_steps = (
+            f"scaffolded {cname} at {target} (source: depend — registry)\n"
+            f"  ! aurora-harness is NOT YET published to the ESP-IDF\n"
+            f"  ! Component Registry (status: scheduled for v2.0). Until\n"
+            f"  ! then, `esp-harness build` will fail with `Version solving\n"
+            f"  ! failed`. Use --component-source link or vendor instead."
+        )
+        next_steps_json = "registry_not_published"
+
     output.success(
         {
             "project": str(target),
@@ -625,12 +676,8 @@ def run(args: argparse.Namespace, output: Output) -> int:
             "component_source": source,
             "harness_root": str(harness_root) if harness_root else None,
             "files": list(files.keys()),
+            "next_step": next_steps_json,
         },
-        human=(
-            f"scaffolded {cname} at {target} (source: {source})\n"
-            f"  cd {target}\n"
-            f"  esp-harness build\n"
-            f"  esp-harness flash"
-        ),
+        human=next_steps,
     )
     return OK

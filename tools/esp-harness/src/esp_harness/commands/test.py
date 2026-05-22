@@ -44,6 +44,25 @@ def run(args: argparse.Namespace, output: Output) -> int:
                        error=f"no tests dir at {TESTS_DIR}")
         return GENERIC_ERROR
 
+    # Probe pytest before running — it's in [project.optional-dependencies].test
+    # (not the default install), and a raw `python -m pytest` failure dumps
+    # `No module named pytest` which doesn't tell the user *how* to fix it.
+    try:
+        import pytest  # noqa: F401
+    except ImportError:
+        output.failure(
+            exit_code=GENERIC_ERROR,
+            error="pytest is not installed in this Python environment.",
+            human=(
+                "esp-harness test requires pytest, which is an optional\n"
+                "dependency. Install it with one of:\n"
+                f"  {sys.executable} -m pip install pytest\n"
+                f"  {sys.executable} -m pip install 'esp-harness[test]'   (if you installed via PyPI)\n"
+                "  pip install -e 'tools/esp-harness[test]'              (editable from this repo)"
+            ),
+        )
+        return GENERIC_ERROR
+
     cmd = [sys.executable, "-m", "pytest", str(TESTS_DIR)]
     if args.verbose_pytest:
         cmd.append("-v")

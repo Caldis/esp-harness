@@ -189,10 +189,19 @@ class ConsoleSession:
                 resp.ok = True
                 resp.text = m.group(1)
                 ack_seen = True
+                # If we're not waiting for anything else, stop now.
                 if expect_payload is None and evt_re is None:
                     break
+                # If the EVT we were waiting for already arrived
+                # *before* OK (commands that emit progress during
+                # execution — e.g. `scene next` → `scene_changed`
+                # fires from the scene-fw notify before cmd_scene's
+                # console_reply_ok), we don't need to wait any further.
+                if evt_re is not None and resp.matched_evt is not None \
+                   and expect_payload is None:
+                    break
                 # else continue: look for BEGIN and/or wait for EVT.
-                if evt_re is not None:
+                if evt_re is not None and resp.matched_evt is None:
                     # Switch to the (usually shorter) EVT-only deadline so
                     # we don't sit on the parent timeout for no reason.
                     evt_wait_start = time.monotonic()
@@ -214,13 +223,28 @@ class ConsoleSession:
             if m:
                 body = m.group(1)
                 resp.events.append(body)
-                if evt_re is not None and ack_seen and resp.matched_evt is None:
+                # Test the regex on EVERY EVT, not just post-ack ones.
+                # Some firmware commands (e.g. `scene next`) emit the
+                # outcome EVT during command processing — BEFORE the
+                # synchronous OK: reply. Gating on ack_seen here meant
+                # those EVTs landed in `events` but never matched.
+                if evt_re is not None and resp.matched_evt is None:
                     if evt_re.search(body):
                         resp.matched_evt = body
-                        if evt_wait_start is not None:
-                            resp.evt_wait_ms = int(
-                                (time.monotonic() - evt_wait_start) * 1000)
-                        break
+                        if ack_seen:
+                            # Match arrived AFTER ack — measure from
+                            # the wait_start time. If ack hasn't arrived
+                            # yet, evt_wait_ms stays 0 (we matched
+                            # pre-ack and didn't need to wait).
+                            if evt_wait_start is not None:
+                                resp.evt_wait_ms = int(
+                                    (time.monotonic() - evt_wait_start) * 1000)
+                            # Post-ack match — safe to stop reading.
+                            break
+                        # Pre-ack match: keep reading until OK: arrives
+                        # so the caller still gets `resp.ok` set
+                        # correctly. The break above on ack_seen handles
+                        # the early-exit path.
                 continue
 
             m_begin = _BEGIN_RE.match(ln)

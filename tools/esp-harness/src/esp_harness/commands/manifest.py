@@ -215,7 +215,15 @@ def _fetch_device_manifest(port: str, baud: int, timeout: float) -> DeviceManife
                     dm.scenes = parsed.get("scenes", [])
                 except Exception as e:
                     dm.fetch_error = (dm.fetch_error or "") + f" scenes parse: {e}"
-            dm.fetched_ok = dm.fetch_error is None and (dm.commands or dm.scenes)
+            # Coerce to a real bool — `X and (list or list)` returns the
+            # operand, so without bool() the manifest's
+            # `device.available` field becomes the raw command list (an
+            # 18-element array of dicts). AI agents branching on
+            # `if manifest["device"]["available"]` get a truthy list and
+            # think they have a device even when they don't.
+            dm.fetched_ok = bool(
+                dm.fetch_error is None and (dm.commands or dm.scenes)
+            )
     except Exception as e:
         dm.fetch_error = str(e)
     return dm
