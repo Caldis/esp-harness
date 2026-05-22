@@ -131,6 +131,23 @@ Test-Case "build/flash/run refuse MSys/Mingw exit-0 (R3-CRIT + v1.7.3 regression
     return $true
 }
 
+Test-Case "README 'Current release' matches pyproject (drift catch)" {
+    # README.md hand-maintains the current version in its Status row.
+    # Lesson 14/18: hand-maintained version literals drift. Smoke
+    # catches it at release time so we don't ship a misleading README
+    # again.
+    $pyproject_line = (Select-String -Path "$RepoRoot\tools\esp-harness\pyproject.toml" -Pattern '^version\s*=').Line
+    $pyproject_ver = ($pyproject_line -split '"')[1]
+    $readme_line = (Select-String -Path "$RepoRoot\README.md" -Pattern '\*\*Current release\*\*').Line
+    if (-not $readme_line) {
+        throw "README 'Current release' row missing — table changed?"
+    }
+    if ($readme_line -notmatch "v$([regex]::Escape($pyproject_ver))") {
+        throw "README claims version different from pyproject=$pyproject_ver — line: $readme_line"
+    }
+    return $true
+}
+
 Test-Case "version triangulation (CLI / manifest / pyproject all in sync)" {
     # Three sources must agree, otherwise a release like v1.7.2 ships
     # under a stale version literal. Was: only checked CLI vs manifest;
