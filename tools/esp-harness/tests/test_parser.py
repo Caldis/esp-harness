@@ -64,6 +64,21 @@ from esp_harness.core.parser import MAX_ARGS, tokenise_console_line
         ('cmd "a b c" tail',
          ["cmd", "a b c", "tail"]),
 
+        # ── nested JSON whose STRING VALUES contain whitespace ────
+        # Surfaced by agent-dashboard's H1 (gap G-H2 in HARNESS_GAPS):
+        # the realistic shape `dash snapshot "{"msg":"hi there"}"`
+        # has a space inside the JSON string value, and the inner
+        # `"` characters must NOT close the outer quoted token. Each
+        # inner `"` is followed by a non-whitespace char, so they
+        # pass through verbatim, and the whole payload arrives intact.
+        ('dash snapshot "{"msg":"hi there"}"',
+         ["dash", "snapshot", '{"msg":"hi there"}']),
+        ('dash event "{"role":"user","text":"refactor the auth flow"}"',
+         ["dash", "event", '{"role":"user","text":"refactor the auth flow"}']),
+        # Multi-space + special punctuation inside JSON value.
+        ('dash msg "{"hint":"rm -rf /tmp/foo  -- be careful"}"',
+         ["dash", "msg", '{"hint":"rm -rf /tmp/foo  -- be careful"}']),
+
         # ── empty quoted token ────────────────────────────────────
         ('cmd ""',                            ["cmd", ""]),
 
