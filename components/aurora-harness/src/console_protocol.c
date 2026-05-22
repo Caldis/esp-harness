@@ -205,9 +205,39 @@ static void dispatch_line(char *line)
         char *out = p;
         args.argv[args.argc++] = out;
         bool in_quote = false;
+        bool quoted_token = false;  /* did this token open with a `"` ? */
+        if (*p == '"') {
+            quoted_token = true;
+            in_quote = true;
+            p++;
+        }
         while (*p) {
             if (!in_quote && (*p == ' ' || *p == '\t')) break;
             if (*p == '"') {
+                /* For quoted tokens, ONLY the matching close-quote terminates;
+                 * inner `"` are passed through verbatim (essential for JSON
+                 * payloads — `dash prompt "{\"id\":...}"` must reach the
+                 * handler with the inner quotes intact). For unquoted tokens,
+                 * any `"` toggles in_quote (legacy behaviour preserved for
+                 * `wifi connect ssid="My Wi-Fi"`-style argv where spaces
+                 * inside need the quote pair). G-7 (agent-dashboard project)
+                 * surfaced the old "strip all quotes" behaviour as a real
+                 * bug — nested JSON payloads collapsed to invalid syntax. */
+                if (quoted_token) {
+                    /* Look ahead: a `"` at end-of-token (whitespace or NUL
+                     * follows) is the closing delimiter. Anything else is a
+                     * literal embedded quote. */
+                    char nx = *(p + 1);
+                    if (nx == '\0' || nx == ' ' || nx == '\t') {
+                        in_quote = false;
+                        p++;
+                        break;
+                    }
+                    /* Embedded `"` — copy it through verbatim. */
+                    *out++ = *p++;
+                    continue;
+                }
+                /* Legacy unquoted-token quote-toggle path. */
                 in_quote = !in_quote;
                 p++;
                 continue;
