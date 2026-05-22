@@ -184,6 +184,30 @@ if ($SkipDevice) {
         }
         return $true
     }
+    Test-Case "bench --compare produces structured diff (regressions allowed)" {
+        # Doesn't gate on regressions=0 — heap_free / psram_free drift
+        # several percent depending on what's run recently (audio
+        # loopback alone allocates ~440 KB PSRAM transiently). What we
+        # ARE checking: the comparison runs, produces a structured
+        # diff, and the baseline isn't a raw git SHA from the v1.5 era.
+        $line = & $py -m esp_harness bench --compare --quick --port $Port --json 2>&1 |
+                Select-Object -Last 1
+        $j = $line | ConvertFrom-Json
+        # On regression-failure exit, the compare object is nested
+        # under snapshot.compare. On success, it's at top level.
+        $cmp = if ($j.compare) { $j.compare } else { $j.snapshot.compare }
+        if (-not $cmp) { throw "no 'compare' object anywhere in bench output" }
+        if (-not $cmp.diffs -or $cmp.diffs.Count -lt 3) {
+            throw "compare.diffs too small: $($cmp.diffs.Count) metrics"
+        }
+        if ($cmp.baseline_device.app_version -match '^[0-9a-f]+-dirty$') {
+            throw "baseline is a raw SHA — needs --baseline against current build"
+        }
+        if (-not $cmp.baseline_device.app_version.StartsWith("v")) {
+            throw "baseline app_version doesn't look like a release tag: $($cmp.baseline_device.app_version)"
+        }
+        return $true
+    }
     Test-Case "scene system → ?stat scene_id == system" {
         Console-Body "scene system" | Out-Null
         Start-Sleep -Milliseconds 400
