@@ -350,7 +350,9 @@ substitute at build/install time, or assert in CI that it tracks.
 
 ---
 
-## Convergence summary (v1.7.0 → v1.7.1)
+## Convergence summary (v1.7.0 → v1.7.1 → 1.7.1-post)
+
+### Phase 1 (v1.7.0 → v1.7.1) — author-driven E2E verification
 
 | Defect | Lesson | Severity | Detected by |
 |---|---|---|---|
@@ -363,9 +365,56 @@ substitute at build/install time, or assert in CI that it tracks.
 | `tap_hit` EVT unobservable | L9 | framework gap | tap regression |
 | `imu.accel` semantics misleading | — | doc gap | sensor regression |
 
-8 defects from one verification pass. All would have been caught by
-a `tools/smoke.ps1` pre-release script that runs every command and
-checks its JSON contract — that's the v1.7.1 / Q9 deliverable.
+8 defects from one verification pass. All caught by hand-running every
+command; none by automated tests. → `tools/smoke.ps1` ships in v1.7.1
+to lock these in as permanent regression gates.
+
+### Phase 2 (1.7.1 → 1.7.1-post) — adversarial subagent training rounds
+
+Round 1: minimal-context first-time-user simulation. **Found 8 issues**,
+3 critical (scaffold non-buildable), 5 polish.
+
+| Defect | Lesson | Severity | Detected by |
+|---|---|---|---|
+| Scaffold missing `IDF_TARGET_ESP32S3` | L5 | critical — build fails | round-1 subagent |
+| Scaffold missing `LV_USE_SNAPSHOT` | — | critical — link fails | round-1 subagent |
+| Vendor-mode BSP not bundled | L13 | critical — link fails | round-1 subagent |
+| README quickstart not honest | L13 | blocking — wrong expectation | round-1 subagent |
+| Windows mojibake (`?ping �� OK`) | — | minor — output corruption | round-1 subagent |
+| ANSI escapes in non-TTY | — | minor — visual | round-1 subagent |
+| Version triangulation broken | L14 | minor — three different answers | round-1 subagent |
+| Manifest scene metadata 14/20 empty | — | minor — discovery hole | round-1 subagent |
+
+Round 2: post-fix verification + harder scenarios. **Found 4 new
+issues**, 3 critical-ish, 1 polish.
+
+| Defect | Lesson | Severity | Detected by |
+|---|---|---|---|
+| `manifest.device.available` was a list | L11 | critical — JSON type contract | round-2 subagent |
+| `--wait-evt` missed pre-ack EVT | L12 | critical — framework gap | round-2 subagent |
+| `vendor`/`depend` modes lied about being buildable | L13 | critical — UX | round-2 subagent |
+| `esp-harness test` cryptic on missing pytest | — | minor — DX | round-2 subagent |
+| README/badge/`idf_component.yml` pin all stale at `1.5.0` | L14 | minor — drift | round-2 subagent |
+
+Round 3 (in progress as of v1.7.1-post): port-pretend exercise +
+AI-agent E2E loop + deliberate sim regression hunt. Pending.
+
+### Aggregate
+
+| Round | Defects found | Critical | Time to fix | Smoke cases added |
+|---|---|---|---|---|
+| Author E2E | 8 | 5 | ~2 hr | 9 |
+| Round 1 | 8 | 3 | ~3 hr | 0 (scaffolder rewrite) |
+| Round 2 | 4 | 3 | ~1.5 hr | 3 (R2-bug regression) |
+| Round 3 | TBD | TBD | TBD | TBD |
+
+20 distinct defects across three rounds of adversarial testing on a
+single codebase. **Trajectory positive**: author E2E found the most
+(8), round 1 found 8, round 2 found 4 — convergence visible.
+
+The framework now has **18 smoke cases**, each anchored to a real
+defect that previously shipped. That's the bar from L7 generalised:
+"every test that has ever caught a real bug runs every release."
 
 ---
 
