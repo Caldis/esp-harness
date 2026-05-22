@@ -354,6 +354,33 @@ if ($SkipDevice) {
         }
         return $true
     }
+    Test-Case "oversize line: one ERR + no spurious cmd (agent-dashboard regression)" {
+        # The agent-dashboard project surfaced this: the firmware's
+        # console_task used to reset pos=0 on overflow but keep accumulating
+        # the *rest* of the same too-long line, so a 2 KB JSON push got
+        # "ERR: line too long" + a bogus "unknown command: <tail>" reply
+        # for the tail bytes after position 1023. Now the task drains
+        # everything until the next '\n' once overflowed.
+        #
+        # We don't use Console-Body here because we need to count ALL
+        # OK:/ERR: lines, not just the first one. --raw exposes every
+        # line the device emitted during the timeout.
+        $padding = "X" * 1200    # > CONSOLE_MAX_LINE (1024)
+        $payload = "?ping " + $padding
+        $raw = & $py -m esp_harness console --cmd $payload --port $Port --raw --timeout 3 2>&1
+        $err_lines = @($raw | Where-Object { $_ -match "^ERR:" })
+        $unk_lines = @($raw | Where-Object { $_ -match "unknown command" })
+        if ($err_lines.Count -ne 1) {
+            throw "want exactly 1 ERR, got $($err_lines.Count): $($err_lines -join ' | ')"
+        }
+        if ($err_lines[0] -notmatch "line too long") {
+            throw "ERR not the overflow one: $($err_lines[0])"
+        }
+        if ($unk_lines.Count -gt 0) {
+            throw "tail-of-oversize parsed as command: $($unk_lines -join ' | ')"
+        }
+        return $true
+    }
     Test-Case "scene system → ?stat scene_id == system" {
         Console-Body "scene system" | Out-Null
         Start-Sleep -Milliseconds 400

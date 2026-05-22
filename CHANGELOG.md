@@ -6,6 +6,80 @@ Repo-level milestones. Per-artifact changelogs live in:
 - [`tools/esp-harness/CHANGELOG.md`](./tools/esp-harness/CHANGELOG.md) (toolkit history; preserved from `esp32-harness-toolkit`)
 - [`examples/aurora/CHANGELOG.md`](./examples/aurora/CHANGELOG.md) (Aurora demo history)
 
+## [Unreleased]
+
+Surfaced by `esp32-agent-dashboard` as the first real consuming-project
+gap report (`HARNESS_GAPS.md`). 4 of 5 gaps addressed in this revision:
+
+| Gap | Severity | Resolution |
+|---|---|---|
+| G-1 — `console --cmd` 140 ms startup overhead | enhancement | **deferred** (designed as backlog item; lessons-v1.7.md ADR-1) |
+| G-2 — `subprocess(text=True)` crash on non-UTF-8 locale | docs | gotcha added to toolkit AGENT.md |
+| G-3 — can't share open port between push + EVT-listen | enhancement | **deferred** (same daemon mode as G-1) |
+| G-4 — payload tag undocumented (had to grep firmware) | bug | OK lines now self-describing (`tag=HELP/SCENES/DUMP`) |
+| G-5 — Codex CLI has no hook system | out-of-scope | noted only |
+
+Plus one critical bug found by proactive audit of the same project's
+use case (Agent G):
+
+### Critical — console_protocol overflow tail leaked as bogus commands
+
+The agent-dashboard consuming project surfaced this: when a host pushes
+a line longer than `CONSOLE_MAX_LINE` (1024 bytes — common for JSON
+snapshots / streamed sensor blobs), the firmware emitted `ERR: line
+too long` AND then accepted the tail of the same overflowed line as a
+fresh command. So a 2 KB push resulted in one ERR plus a follow-up
+`ERR: unknown command: <noise-from-byte-1024-onwards>`. AI agents that
+parsed the reply stream saw two errors for one request and could not
+tell whether their actual command had been processed.
+
+- `components/aurora-harness/src/console_protocol.c::console_task`
+  now drains until the next `'\n'` after an overflow. The host gets
+  exactly one ERR per oversize line; the tail is silently discarded.
+  Error message updated to say `(rest of line discarded)` so a human
+  reading the serial monitor knows where they stand.
+- Smoke gate `oversize line: one ERR + no spurious cmd
+  (agent-dashboard regression)` added to `tools/smoke.ps1`. Pushes
+  1200-byte padded `?ping`, asserts exactly one ERR + zero "unknown
+  command" follow-ups.
+
+### Self-describing OK lines (G-4)
+
+- `?help json`, `scene list`, and `?dump` now embed `tag=HELP` /
+  `tag=SCENES` / `tag=DUMP` in their `OK:` reply. Host parsers can
+  pick the right `--payload TAG` value by grepping the OK body for
+  `tag=` — no need to know per-command tag names in advance.
+- Convention is documented in `console_protocol.h`'s payload section.
+- Backward-compatible: the OK regex matches anything after `OK:`, so
+  consumers that ignored the body still work; consumers that now
+  read `tag=` get auto-discovery.
+
+### Docs
+
+- `examples/aurora/AGENT.md` gains a Recipes section (§7) capturing the
+  "shared state struct for console-writes / scene-reads" pattern
+  surfaced by the agent-dashboard project, plus three anti-patterns
+  the sibling agents hit. Deliberately not a framework primitive —
+  the struct shape is consumer-specific — but the recipe is now
+  documented so future consumers don't reinvent.
+- `tools/esp-harness/AGENT.md` §12 Gotchas: new "Subprocessing the
+  CLI from another Python process" subsection (G-2). Pins the
+  `encoding="utf-8"` requirement that bit zh-CN Windows bridges
+  decoding `"USB 串行设备 (COM9)"`, and points future daemon-mode
+  consumers at `ConsoleSession` for sub-100 ms push latency.
+- `docs/lessons-v1.7.md` gains L19 (Overflow recovery must drain to
+  the next line boundary). First lesson sourced from a real consuming
+  project, not adversarial subagents.
+
+### Deferred (tracked for next release)
+
+- G-1 + G-3: `esp-harness console --listen` daemon (one persistent
+  serial-port session shared across snapshot pushes AND EVT readers).
+  Same underlying need from two angles; one feature serves both.
+  Design sketch lives in `docs/lessons-v1.7.md` next to L19. Will
+  ship when the second real-project consumer asks for it — single
+  data point is not enough to nail the API.
+
 ## [1.7.5] — 2026-05-22 (round-6 final falsification pass)
 
 **Round-6 finally finds 0 critical.** Two blocking + 3 minor — all

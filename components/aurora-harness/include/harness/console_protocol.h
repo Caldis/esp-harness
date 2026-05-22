@@ -64,10 +64,16 @@ void console_reply_err(const char *fmt, ...);
 void console_send_evt(const char *fmt, ...);
 
 /* Multi-line payload framing for binary-ish data (e.g. base64 framebuffer).
+ *   console_reply_ok("dump start tag=DUMP w=128 h=128");
  *   console_begin_payload("DUMP", "w=128 h=128 fmt=RGB565 bytes=32768");
  *   console_write_raw(buf, len);    // call many times
  *   console_end_payload("DUMP");
- * Host parser knows BEGIN/END markers as transport boundaries. */
+ *
+ * Convention: any OK: line that precedes a payload block names the
+ * tag with `tag=<NAME>` somewhere in the body. Host parsers grep the
+ * OK body for `tag=` and use the captured name as their --payload
+ * argument — no need to know in advance which command emits which
+ * tag (agent-dashboard G-4). */
 void console_begin_payload(const char *tag, const char *meta);
 void console_write_raw(const char *data, size_t len);
 void console_end_payload(const char *tag);

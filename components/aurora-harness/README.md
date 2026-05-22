@@ -291,7 +291,7 @@ whether you really want that many full-screen views.
 
 ```
 host → device     scene list
-device → host     OK: scene manifest follows
+device → host     OK: scene manifest follows tag=SCENES
                   SCENES_BEGIN fmt=json
                   {"count":18,"current":0,"scenes":[
                     {"idx":0,"id":"halo","name":"I. Halo","on_long_press":false},

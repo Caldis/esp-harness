@@ -527,6 +527,21 @@ Things you cannot discover by reading `manifest`. Read once, internalise, don't 
 * **Don't run two consumers on the same port.** Only one process can have `COM9` open. If `flash` returns exit 11 ("busy"), kill any open monitor/PuTTY/VS Code Serial Monitor first.
 * **`esp-harness console` is the generic transport.** Specialised CLI commands (`audio`, `screenshot`, `backtrace`, etc.) wrap it for ergonomics + hearing-safety caps. When in doubt — or for a new firmware command not yet in the manifest — fall back to `esp-harness console --cmd "..."`.
 
+### Subprocessing the CLI from another Python process
+
+* **Always pass `encoding="utf-8"` to `subprocess.run`.** The CLI writes UTF-8 to stdout (we call `sys.stdout.reconfigure` at startup so unicode device descriptors like `"USB 串行设备 (COM9)"` round-trip cleanly). The default `text=True` decode in the parent uses `locale.getpreferredencoding()` — that's `gbk` on zh-CN Windows, `cp1252` on de-DE, etc. — and crashes with `UnicodeDecodeError` on any non-ASCII byte. Pattern that works everywhere:
+  ```python
+  proc = subprocess.run(
+      ["esp-harness", "console", "--cmd", "?sys", "--json"],
+      capture_output=True, text=True,
+      encoding="utf-8", errors="replace",   # ← required, not optional
+      timeout=10,
+  )
+  ```
+  `errors="replace"` rather than `"strict"` because an OS-level corrupt byte shouldn't take your bridge down.
+
+* **Subprocess overhead is ~140 ms per invocation** (CPython startup + import graph + port re-open). Acceptable for one-shot commands; if you need <100 ms snapshot pushes, import `esp_harness.core.console_session.ConsoleSession` directly and reuse a single opened session — that's what the consuming-project bridges do. A daemon-mode `console --listen` that exposes the same over a socket is on the backlog (tracked from agent-dashboard gaps G-1/G-3).
+
 ### LVGL / display
 
 * **Never call `lv_*` APIs from a non-LVGL task without `bsp_display_lock`.** The Tilt scene's 20 Hz timer made this discoverable; cross-task races corrupt LVGL's invalidate area list and the next call wedges in `lv_inv_area`. `scene action` over the console uses `lv_async_call` to dispatch onto the LVGL task instead.

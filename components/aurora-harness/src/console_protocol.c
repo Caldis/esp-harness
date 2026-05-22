@@ -119,8 +119,11 @@ static int cmd_help(const console_args_t *a)
     /* JSON mode — machine-readable manifest of every registered command.
      * The toolkit's `manifest` CLI calls this to enumerate firmware
      * capabilities without grepping source. Framed with HELP_BEGIN /
-     * HELP_END so it can exceed CONSOLE_MAX_LINE. */
-    console_reply_ok("manifest follows");
+     * HELP_END so it can exceed CONSOLE_MAX_LINE. The OK line names the
+     * tag explicitly (`tag=HELP`) so a host parser can pick the right
+     * `--payload TAG` value without grepping firmware source — the
+     * agent-dashboard project surfaced this as gap G-4. */
+    console_reply_ok("manifest follows tag=HELP");
     console_begin_payload("HELP", "fmt=json");
     printf("{\"count\":%d,\"commands\":[", s_registry_n);
     for (int i = 0; i < s_registry_n; ++i) {
@@ -244,6 +247,19 @@ static void console_task(void *arg)
 
     static char line[CONSOLE_MAX_LINE];
     size_t pos = 0;
+    /* When a single line exceeds CONSOLE_MAX_LINE-1 bytes we cannot
+     * accumulate it. The OLD behaviour was: emit ERR, reset pos=0,
+     * and keep filling line[] with the tail of the same long line — so
+     * the *rest* of the oversize input got parsed as a fresh command
+     * the moment '\n' arrived. Hosts pushing big JSON payloads (e.g.
+     * the agent-dashboard scenes that stream sensor snapshots >1 KB)
+     * got "ERR: line too long" PLUS a bogus "unknown command: <noise>"
+     * for the truncated tail.
+     *
+     * The fix is a drain state: once overflowed, ignore every byte
+     * until the next '\n', then resume normally. The host gets exactly
+     * one ERR per oversize line and no spurious dispatch. */
+    bool draining = false;
     uint8_t buf[64];
 
     while (1) {
@@ -251,19 +267,30 @@ static void console_task(void *arg)
         for (int i = 0; i < n; ++i) {
             uint8_t c = buf[i];
             if (c == '\n') {
+                if (draining) {
+                    /* End of oversize line — back to normal accumulation. */
+                    draining = false;
+                    pos = 0;
+                    continue;
+                }
                 line[pos] = '\0';
                 if (pos > 0) {
                     dispatch_line(line);
                 }
                 pos = 0;
+            } else if (draining) {
+                /* Silently discard the rest of an oversize line. */
+                continue;
             } else if (c == '\r') {
                 continue;  /* ignore CR; handled by trim too */
             } else if (pos + 1 < sizeof(line)) {
                 line[pos++] = (char)c;
             } else {
-                /* Overflow: drop the line and reset */
+                /* Overflow: emit one ERR, enter drain until '\n'. */
+                draining = true;
                 pos = 0;
-                console_reply_err("line too long, max %d bytes", (int)sizeof(line) - 1);
+                console_reply_err("line too long, max %d bytes (rest of line discarded)",
+                                  (int)sizeof(line) - 1);
             }
         }
     }

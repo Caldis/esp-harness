@@ -98,7 +98,9 @@ static int cmd_scene(const console_args_t *args)
     if (strcmp(sub, "list") == 0) {
         int n = scene_fw_count();
         int cur = scene_fw_current_index();
-        console_reply_ok("scene manifest follows");
+        /* Self-describing OK: name the payload tag so host parsers
+         * don't have to grep firmware source (agent-dashboard G-4). */
+        console_reply_ok("scene manifest follows tag=SCENES");
         console_begin_payload("SCENES", "fmt=json");
         printf("{\"count\":%d,\"current\":%d,\"scenes\":[", n, cur);
         for (int i = 0; i < n; ++i) {

@@ -230,7 +230,9 @@ static int cmd_dump(const console_args_t *args)
     char meta[80];
     snprintf(meta, sizeof(meta), "w=%d h=%d fmt=RGB565LE bytes=%u",
              target_w, target_h, (unsigned)out_bytes);
-    console_reply_ok("dump start %s", meta);
+    /* Self-describing OK: name the tag so host parsers don't have to
+     * grep firmware source (agent-dashboard G-4). */
+    console_reply_ok("dump start tag=DUMP %s", meta);
     console_begin_payload("DUMP", meta);
 
     /* 48 input bytes per 64-char output line. */

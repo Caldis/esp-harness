@@ -171,7 +171,65 @@ showcase/
     └── golden/            visual regression baseline BMPs
 ```
 
-## 7. Cardinal rule
+## 7. Recipes surfaced by consuming projects
+
+These aren't framework primitives — they're patterns the framework
+**deliberately doesn't ship** because each consumer wants its own
+flavour. Document them here so the next consumer doesn't reinvent.
+
+### Recipe: shared state struct for "console writes, scene reads"
+
+Surfaced by `esp32-agent-dashboard` (2026-05-23). When the host pushes
+runtime data to the device via console commands ("dash tokens add 42",
+"dash status update ..."), every scene that visualises a slice of that
+data wants the same read path. The pattern that converged after
+sibling-agent collaboration:
+
+1. Define ONE app-owned `agent_state_t` struct with a mutex.
+   ```c
+   // main/agent_state.h
+   typedef struct {
+       uint64_t  tokens_cumulative;
+       uint64_t  tokens_today;
+       bool      prompt_active;
+       char      prompt_tool[64];
+       /* ... */
+   } agent_state_t;
+   void           agent_state_lock(void);
+   void           agent_state_unlock(void);
+   agent_state_t *agent_state_get(void);   /* call while locked */
+   ```
+2. Console commands grab the lock, mutate, release. They DO NOT touch
+   LVGL — that's the scene's job.
+3. Each scene runs a low-Hz `lv_timer` (~1 Hz is plenty) that:
+   - locks the state struct
+   - copies the slice it cares about into local stack variables
+   - unlocks immediately
+   - compares each field against a `cached_*` member on its
+     `scene_state_t` and re-renders only if it changed
+4. Scenes that NEED instant updates (e.g. a "permission prompt"
+   that pops the moment the host requests it) bypass the polling
+   timer by having the console command call into a scene-specific
+   `lv_async_call(scene_force_refresh, ...)` after mutating state.
+
+**Why not a framework primitive**: the shape of the state struct is
+100% consumer-specific. The harness providing a generic typed
+state container would be a YAGNI trap — each consumer's struct has
+different field types, different update granularity, different
+liveness requirements. The mutex + cached-field pattern is the
+RECIPE; the struct itself is yours.
+
+**Anti-patterns surfaced during agent-dashboard development**:
+- Don't `lv_label_set_text` from inside the console command handler
+  on a non-LVGL task. Use `lv_async_call` or let the scene's timer
+  pick it up.
+- Don't keep the state lock held while calling into LVGL — recipe for
+  priority inversion + frame stutter.
+- Don't poll on every LVGL tick (33 ms). 1 Hz is enough for status
+  dashboards; even prompts feel instant via `lv_async_call` because
+  the user perceives "screen changes in <100 ms" as instant.
+
+## 8. Cardinal rule
 
 **Don't break the manifest.**
 

@@ -466,6 +466,94 @@ git tag -a vX.Y.Z+1 -m "..."
 
 ---
 
+## ADR-1 (deferred) — Daemon-mode persistent console session
+
+**Status**: deferred from `[Unreleased]`. Surfaced by agent-dashboard
+gaps G-1 (subprocess startup is 140 ms / call, dominates snapshot
+push latency) and G-3 (a `console --cmd ... --wait-evt REGEX`
+session opens-uses-closes per call, so it can't be combined with a
+high-rate snapshot stream on the same port).
+
+**Both gaps share one root cause**: every `esp-harness console`
+invocation is a fresh process that re-opens the serial port. For
+one-shot CLI use that's fine; for a long-running bridge it's a
+deal-breaker.
+
+**Sketch of the fix**:
+
+```
+esp-harness console --listen \
+  --port COM9 --baud 115200 \
+  --socket tcp://127.0.0.1:9221    # or --socket unix:///tmp/esp.sock
+```
+
+The listen mode:
+- Opens the port once with the standard DTR=False ConsoleSession dance.
+- Accepts JSONL requests over the socket:
+  `{"id":42,"cmd":"?ping","wait_evt":"^pong$","evt_timeout":2}`
+- Streams JSONL responses (OK/ERR + matched EVT) back, plus an
+  unsolicited `{"evt":"..."}` line for every EVT that didn't match
+  a pending wait — so consumers can subscribe to EVTs without
+  framing every wait.
+- One-process-per-port discipline already exists (you can only have
+  one `flash` at a time); the daemon enforces it explicitly.
+
+**Why deferred**: one consuming project asking for it is not a
+strong enough signal to nail the API. The daemon's wire protocol
+will leak into every downstream bridge — committing to it now means
+breaking everyone's bridge later if we got it wrong. Wait for a
+second independent consumer, see whether their needs match G-1+G-3
+or diverge, then decide.
+
+**Workaround for now**: import `esp_harness.core.console_session`
+directly and reuse one open session. Documented in toolkit AGENT.md
+§12. The agent-dashboard bridge does this already.
+
+---
+
+## Lesson 19 — Overflow recovery must drain to the next line boundary
+
+**What broke** (surfaced by `esp32-agent-dashboard` as `HARNESS_GAPS` —
+the first real consuming-project finding): `console_task`'s line
+accumulator handled overflow as "emit ERR, reset pos=0, keep going."
+The keep-going part is the bug. The remaining bytes of the oversize
+line — everything from byte 1024 to the eventual `'\n'` — got written
+into `line[0..N]` and dispatched as a new command. So a 2 KB JSON push
+produced `ERR: line too long` PLUS `ERR: unknown command: <tail>`, two
+errors for one request.
+
+**Why we missed it**: the v1.7 round of testing pushed commands that
+were a few dozen bytes at most. `?help json` returns a multi-KB reply
+but the host-to-device direction never exceeded a few hundred bytes,
+so CONSOLE_MAX_LINE only ever guarded against ESP_LOG vs OK output
+interleaving — never an actual overflow.
+
+**Why agent-dashboard found it**: the project's scenes consume JSON
+snapshots streamed *into* the device (a host pushes sensor / agent
+state changes via `console --cmd '<scene> update <BIG JSON>'`). With
+multi-field payloads the line trivially blows past 1024 bytes.
+
+**Fix**: introduce a `draining` state in `console_task`. On overflow,
+emit one ERR with `(rest of line discarded)` appended, set
+`draining=true`, and silently drop every byte until the next `'\n'`,
+then resume.
+
+**Rule**: any parser that reports an error mid-message must either
+(a) recover at the next message boundary, or (b) reject the whole
+stream. "Reset and keep accepting bytes" is neither — it's a partial
+parse that masquerades as a new message.
+
+**Process change**: every consuming project will be checked for the
+"can the host push N KB synchronously?" question during integration.
+The bar was set by agent-dashboard. Future consumers that exceed it
+get a flag in their integration notes, not a footgun.
+
+**Smoke**: `oversize line: one ERR + no spurious cmd (agent-dashboard
+regression)` in `tools/smoke.ps1` — pushes 1200-byte padded `?ping`,
+asserts exactly one ERR, zero "unknown command" follow-ups.
+
+---
+
 ## Convergence summary (v1.7.0 → v1.7.1 → 1.7.1-post)
 
 ### Phase 1 (v1.7.0 → v1.7.1) — author-driven E2E verification
