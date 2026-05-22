@@ -113,6 +113,18 @@ def run(args: argparse.Namespace, output: Output) -> int:
             "warnings": warnings,
             "artifacts": artifacts,
         }
+        # Same MSys/Mingw refusal trap as build.py / flash.py: idf.py
+        # returns 0 in Git Bash without compiling. `run` would proceed
+        # to flash + monitor stale binaries silently.
+        if "MSys/Mingw is no longer supported" in "\n".join(lines):
+            output.failure(
+                exit_code=100,
+                error=("run: idf.py refused to build inside MSys/Mingw "
+                       "(common with Git Bash on Windows)."),
+                details={"phases": phases, "trigger": "MSys/Mingw"},
+                human="Re-run from PowerShell so the build phase actually compiles.",
+            )
+            return 100
         if rc != 0:
             output.failure(
                 exit_code=BUILD_FAILED,

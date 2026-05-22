@@ -13,6 +13,7 @@ from esp_harness.exit_codes import (
     AMBIGUOUS_DEVICE,
     DEVICE_BUSY,
     FLASH_FAILED,
+    GENERIC_ERROR,
     NO_DEVICE,
     OK,
     PROJECT_NOT_FOUND,
@@ -97,6 +98,44 @@ def run(args: argparse.Namespace, output: Output) -> int:
     full_text = "\n".join(all_lines)
     wrote_bytes = sum(int(m.group(1)) for m in _WROTE_RE.finditer(full_text))
     verified = bool(_HASH_OK_RE.search(full_text))
+
+    # Same MSys/Mingw refusal trap as build.py: idf.py exits 0 from
+    # Git Bash without calling esptool, so wrote_bytes ends up 0 and
+    # verified=False. Catch the explicit refusal AND the suspicious
+    # zero-bytes case as belt-and-braces.
+    if "MSys/Mingw is no longer supported" in full_text:
+        output.failure(
+            exit_code=100,
+            error=("idf.py refused to flash inside MSys/Mingw "
+                   "(common with Git Bash on Windows)."),
+            details={
+                "elapsed_ms": elapsed_ms,
+                "project": str(project),
+                "port": port,
+                "trigger": "MSys/Mingw is no longer supported",
+                "wrote_bytes": wrote_bytes,
+            },
+            human="Re-run from PowerShell — Git Bash's MSys environment "
+                  "trips idf.py's compatibility check and esptool never "
+                  "runs. Toolkit's idf_runner activates the real EIM env "
+                  "but can't override idf.py's own MSys detection.",
+        )
+        return 100
+    if returncode == 0 and wrote_bytes == 0:
+        output.failure(
+            exit_code=GENERIC_ERROR,
+            error=("flash returned 0 but no bytes were written — "
+                   "likely an environment-detection short-circuit."),
+            details={
+                "elapsed_ms": elapsed_ms,
+                "project": str(project),
+                "port": port,
+                "wrote_bytes": 0,
+            },
+            human="Run `idf.py -p <PORT> flash` directly to see the "
+                  "underlying refusal.",
+        )
+        return GENERIC_ERROR
 
     if returncode == 0:
         output.success(
