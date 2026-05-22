@@ -6,6 +6,141 @@ Repo-level milestones. Per-artifact changelogs live in:
 - [`tools/esp-harness/CHANGELOG.md`](./tools/esp-harness/CHANGELOG.md) (toolkit history; preserved from `esp32-harness-toolkit`)
 - [`examples/aurora/CHANGELOG.md`](./examples/aurora/CHANGELOG.md) (Aurora demo history)
 
+## [1.7.2] — 2026-05-22 (post-1.7.1 adversarial training pass)
+
+**Adversarial-subagent convergence pass.** Three rounds of evaluation
+by minimal-context subagents simulating first-time users surfaced
+**12 defects** beyond the eight that v1.7.1's author E2E pass had
+caught. All fixed; trajectory positive (8 → 4 → TBD criticals per
+round); the 18-case smoke gate now locks every defect class in as a
+permanent regression test.
+
+### Round-1 findings (8 defects)
+
+Scaffold path was unbuildable for two distinct reasons:
+- **`CONFIG_IDF_TARGET_ESP32S3=y` missing** — fresh `idf.py build`
+  defaulted to plain `esp32` (no PSRAM, smaller IRAM); the LVGL
+  framebuffer alloc failed. (Lesson 5.)
+- **`CONFIG_LV_USE_SNAPSHOT=y` missing** — `aurora-harness/src/screenshot.c`
+  uses `lv_snapshot_take_to_draw_buf`, which is gated off by default
+  in upstream LVGL Kconfig.
+- **Vendor mode didn't bundle a BSP** — `bsp_display_start` from
+  `bsp/esp-bsp.h` was unresolved at link, every fresh-`new` project
+  failed to build. (Lesson 13.)
+- Default `--component-source` flipped from `vendor` to `link`; the
+  Waveshare BSP now wires in automatically via
+  `EXTRA_COMPONENT_DIRS`. Out-of-the-box build works.
+
+Polish:
+- **Windows mojibake** (`?ping �� OK`) — CLI now forces stdout/stderr
+  to UTF-8 + `chcp 65001` on entry.
+- **Version triangulation** — `--version` was a stale string literal in
+  `__init__.py`. Now reads from `pyproject.toml` via
+  `importlib.metadata`. (Lesson 14.)
+- **Manifest scene metadata** — 14 of 20 scenes had empty
+  `description` / `tags`. All filled in.
+- **monitor `--until "ready"`** — documented the substring-match
+  gotcha (false-positive on "already").
+
+### Round-2 findings (4 defects)
+
+- **`manifest.device.available` was an 18-element list, not a bool** —
+  `X and (list or list)` returns the operand. `bool()` wrap.
+  (Lesson 11.) Smoke: `manifest.device.available is a real bool
+  (R2-bug regression)`.
+- **`console --wait-evt REGEX` missed pre-ack EVT** — gated matching
+  on `ack_seen`, so EVTs emitted during command processing (e.g.
+  `scene next` → `scene_changed`) landed in `events` but never
+  matched. Every EVT now runs through the regex. (Lesson 12.) Smoke:
+  `scene next --wait-evt captures pre-ack EVT (R2-bug regression)`.
+- **`esp-harness new --component-source vendor` lied about being
+  buildable** — said "cd / build" but build would fail (no BSP).
+  Per-mode next-steps message now honest:
+    - `link`: cd / build / flash (works as-is)
+    - `vendor`: copy BSP first, with exact path
+    - `depend`: registry-not-published, use link or vendor
+  (Lesson 13.)
+- **`esp-harness test` failed with `No module named pytest`** —
+  pytest is in `[project.optional-dependencies].test`, not the
+  default install. Now probes pytest first, prints three concrete
+  install commands when missing.
+
+### Drift cleanup
+
+- README "Current release", `tools/esp-harness/README.md` badge, and
+  the scaffolder's `idf_component.yml` pin (`^1.5.0`) were all stale.
+  Bumped to `1.7.1+`; the scaffolder pin now reads `__version__` via
+  `_pinnable_version()` so it auto-tracks releases. (Lesson 14.)
+- Bench baseline regenerated against v1.7.1 firmware (was captured
+  against `643b6fb-dirty` with the L2-fixed audio peak_dbfs=0.0 bug
+  still in it).
+- `examples/aurora/docs/scenes-map.md` gained rows XIX (Notify) and
+  XX (Track) — was capped at XVIII.
+- `examples/aurora/AGENT.md` "19 scenes" → "20 scenes".
+- `docs/getting-started.md` "v1.5.0" → "v1.7.1".
+- `docs/faq.md` "all three are 1.5.0" → tag/CLI sync at 1.7.1.
+- `sim-base/mock_bsp.h` `bsp_display_lock` signature `void` → `bool`,
+  matching `harness/bsp_iface.h`.
+- `.github/workflows/sim-diff.yml` installs the toolkit with
+  `[test]` extras so pytest is in the venv (was an undeclared
+  dependency on the GitHub runner image).
+- Top-level README points Windows users at `install.ps1` and the
+  `python -m esp_harness` fallback for when `pip install -e` leaves
+  the shim off `PATH`.
+
+### Smoke gate (`tools/smoke.ps1`)
+
+18 cases all green. New since v1.7.1:
+- Version triangulation (`--version == manifest != 1.5.0`)
+- L9 regression (`tap --wait-evt captures tap_hit`)
+- R2 regression × 3 (pre-ack EVT, manifest available bool,
+  bench --compare structured diff)
+
+Companion `tools/smoke.sh` for Linux/Mac (host-only gates).
+
+### `docs/lessons-v1.7.md`
+
+Lessons L11-L14 appended. Convergence summary now tracks all three
+rounds with per-round defect counts + severities.
+
+### Round-3 findings (1 critical + 4 blocking + 5 minor)
+
+Round-3 subagent (port-pretend / AI-agent E2E loop / sim regression
+hunt / doc drift) on a fresh clone:
+
+| Defect | Severity | Lesson |
+|---|---|---|
+| **Git Bash silent-build trap** — `idf.py` exits 0 with 'MSys/Mingw is no longer supported' from Git Bash on Windows. build.py used to accept rc=0 as success; AI agents would flash stale binaries with no warning. | critical | L15 (new) |
+| **No synthetic-keypress** — physical BOOT/USER/PWR buttons couldn't be exercised remotely. | blocking | — |
+| **`sim/README.md` claimed 3 scenes** (Halo/Grid/Bloom) — actually 13 of 20. | blocking | — |
+| **`components/aurora-harness/README.md`** referenced 'esp32-harness-showcase' (pre-monorepo). | blocking | — |
+| **`tools/esp-harness/tests/README.md`** stale pytest path + CI workflow location. | blocking | — |
+| 5 minor: stale `1.5.0` in docs/index.html + svg + architecture.md / 6 broken markdown links / PORTING.md doesn't mention `bsp_display_start()` + `bsp/esp-bsp.h` convention. | minor | — |
+
+All fixed:
+- **`build.py`** detects the MSys/Mingw refusal + ELF mtime sanity gate;
+  fails closed with `exit_code=100` and a clear hint. Smoke gate
+  `build refuses MSys/Mingw exit-0 (R3-CRIT regression)` (host-only,
+  skips if bash not on PATH).
+- **`?keys press <name> [HOLD_MS]`** — new console command + `keys_synth_press()`
+  in firmware. Synth override with expiry tick lets `keys_task` skip
+  overwriting `pressed=true` for the hold window; count counter +
+  `pressed` level both honour synth. Smoke gate `?keys press boot
+  synth (R3-bug regression)`.
+- **PORTING.md** now documents the `bsp/esp-bsp.h` include-path
+  convention + `bsp_display_start()` entry-point (both load-bearing
+  for a fresh port; both omitted previously).
+- All five doc/path fixes applied in single commit `9f0b56b`.
+
+### Status
+
+- **Smoke: 20/20 cases green** (6 host + 14 device).
+- All round-1, round-2, **and round-3** findings: fixed and
+  regression-tested.
+- Convergence trajectory: 8 → 4 → 1 critical per round. The
+  framework is at the point where further adversarial rounds find
+  papercuts rather than blockers.
+
 ## [1.7.1] — 2026-05-22
 
 **Quality convergence wave.** Hardware verification of v1.7.0 surfaced
