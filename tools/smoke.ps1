@@ -87,36 +87,48 @@ Test-Case "manifest exposes >= 17 toolkit cmds" {
     return $true
 }
 
-Test-Case "build refuses MSys/Mingw exit-0 (R3-CRIT regression)" {
-    # Round-3 subagent: idf.py exits 0 with 'MSys/Mingw is no longer
-    # supported' from Git Bash, build.py used to accept rc=0 as
-    # success and an AI flash would flash stale binaries. Trigger by
-    # invoking through bash if available; otherwise skip.
-    $bash = Get-Command bash -ErrorAction SilentlyContinue
-    if (-not $bash) {
-        # No bash on PATH — skip (the trap can't fire). Don't fail.
-        Write-Host -NoNewline "(skipped: bash not on PATH) "
+Test-Case "build/flash/run refuse MSys/Mingw exit-0 (R3-CRIT + v1.7.3 regression)" {
+    # Round-3 caught the trap in `build`; v1.7.3-prep extended the
+    # same fail-closed contract to `flash` and `run`. All three
+    # subcommands must reject Git Bash's MSys env so AI agents
+    # can't flash stale binaries silently.
+    # Find Git Bash specifically (not WSL bash). PowerShell's
+    # `Get-Command bash` on a Windows box with WSL installed returns
+    # the WSL stub at /usr/bin/bash, which has a totally different
+    # behaviour (no MSys env, won't trigger the idf.py refusal).
+    $gitBash = $null
+    foreach ($candidate in @(
+        "C:\Program Files\Git\bin\bash.exe",
+        "C:\Program Files (x86)\Git\bin\bash.exe",
+        "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe"
+    )) {
+        if (Test-Path $candidate) { $gitBash = $candidate; break }
+    }
+    if (-not $gitBash) {
+        Write-Host -NoNewline "(skipped: Git Bash not installed) "
         return $true
     }
     $aurora = "D:\Code\esp-harness\examples\aurora"
-    $cmd = "cd '$aurora' && '$($py.Replace('\','/'))' -m esp_harness build --project . --json"
-    $out = & $bash.Source -lc $cmd 2>&1 | Select-Object -Last 1
-    try {
-        $j = $out | ConvertFrom-Json
-        # Either the trap fires (ok=false, trigger=MSys/Mingw) OR
-        # something stranger happens (maybe bash is a Linux bash that
-        # actually works). Accept the former; flag if rc=0 + nothing
-        # built (the old failure mode).
-        if ($j.ok -eq $false -and $j.trigger -match "MSys/Mingw") {
-            return $true
+    # Resolve to absolute path before swapping separators — $py is
+    # relative to the smoke script's cwd, Git Bash will cd elsewhere.
+    $pyAbs = (Resolve-Path $py).Path
+    $pyPosix = $pyAbs.Replace('\','/')
+    foreach ($sub in @("build", "flash --port COM9", "run --port COM9 --seconds 2")) {
+        $cmd = "cd '$aurora' && '$pyPosix' -m esp_harness $sub --project . --json"
+        $out = & $gitBash -lc $cmd 2>&1 | Select-Object -Last 1
+        try {
+            $j = $out | ConvertFrom-Json
+        } catch {
+            throw "[$sub] couldn't parse output: $out"
         }
-        if ($j.ok -eq $true -and -not $j.artifacts.elf) {
-            throw "build claimed ok=true but no ELF artifact — trap regressed"
+        if ($j.ok -ne $false) { throw "[$sub] expected ok=false, got $($j.ok)" }
+        $trig = $j.trigger
+        if (-not $trig) { $trig = $j.details.trigger }
+        if (-not ($trig -match "MSys|Mingw")) {
+            throw "[$sub] no MSys/Mingw trigger in response: $($j.error)"
         }
-        return $true
-    } catch {
-        throw "couldn't parse build output: $($_.Exception.Message): $out"
     }
+    return $true
 }
 
 Test-Case "version triangulation (--version == manifest != 1.5.0)" {
