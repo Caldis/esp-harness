@@ -1,5 +1,10 @@
-# Recommended starting Kconfig values for an aurora-harness project.
-# Conservative defaults; tune per your board.
+# Minimal aurora-harness consumer — kept in sync with what `esp-harness new`
+# scaffolds. If you update one, update the other.
+
+# Target — Aurora's Waveshare board is esp32s3. Without this a fresh
+# `idf.py build` defaults to plain `esp32` and fails on missing PSRAM.
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_IDF_TARGET_ESP32S3=y
 
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
@@ -13,3 +18,21 @@ CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
 CONFIG_NVS_ENABLED=y
+
+# aurora-harness ships a `?dump` screenshot command that needs
+# lv_snapshot_take_to_draw_buf — OFF by default; without this,
+# components/aurora-harness/src/screenshot.c fails to compile.
+CONFIG_LV_USE_SNAPSHOT=y
+
+# LVGL libc-malloc adapters + FreeRTOS OS layer — see new-project template
+# for the rationale (PSRAM-backed allocation + lv_async_call correctness).
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_USE_CLIB_STRING=y
+CONFIG_LV_USE_CLIB_SPRINTF=y
+CONFIG_LV_OS_FREERTOS=y
+
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# Bigger fonts so the scene_hello label is legible on a 466×466 screen.
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_22=y

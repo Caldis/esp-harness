@@ -50,15 +50,26 @@ You get:
 ```bash
 git clone https://github.com/Caldis/esp-harness
 cd esp-harness
-pip install -e tools/esp-harness/
+pip install -e tools/esp-harness/        # if `esp-harness` isn't on PATH after,
+                                          # the Scripts/bin dir of your Python
+                                          # isn't on PATH — `python -m esp_harness`
+                                          # always works as a fallback.
 esp-harness doctor                       # what's healthy in your env?
-esp-harness new my-thing                 # scaffolds a fresh project
-cd my-thing && esp-harness build         # builds it
+esp-harness new my-thing                 # scaffolds a fresh project (default:
+                                          # --component-source link — wires the
+                                          # Waveshare BSP automatically)
+cd my-thing && esp-harness build         # builds it (≈ 60s clean)
 ```
 
-That's it. Your `my-thing/` directory now contains a self-contained
-ESP-IDF + LVGL project with the harness vendored in, a "Hello" scene
-rendering, and the console protocol live.
+That's it. Your `my-thing/` directory now contains an ESP-IDF + LVGL
+project that **builds out of the box** on the Waveshare ESP32-S3
+AMOLED 2.16 board — a "Hello" scene rendering, the console protocol
+live, the screenshot pipeline ready.
+
+> **Targeting a different board?** The default scaffolds for the Aurora
+> hardware. Pass `--component-source vendor` for a self-contained copy
+> + manually wire your BSP into `main/CMakeLists.txt`, or see the
+> generated `README.md`'s "Before your first build" section.
 
 For the full setup (flashing to hardware, running the simulator, etc.)
 see [`docs/getting-started.md`](./docs/getting-started.md).
@@ -96,7 +107,9 @@ Pick the one that matches your goal:
 
 ```bash
 pip install -e tools/esp-harness/
-esp-harness new my-thing                 # vendors aurora-harness into ./components/
+esp-harness new my-thing                 # default: link mode (BSP auto-wired);
+                                          # use --component-source vendor for a
+                                          # self-contained copy
 cd my-thing
 esp-harness build && esp-harness flash
 ```
