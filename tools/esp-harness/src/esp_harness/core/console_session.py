@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Iterator
+from typing import Callable, Iterator, Optional
 
 try:
     import serial  # type: ignore[import-untyped]
@@ -43,6 +43,11 @@ class Response:
     raw: str = ""            # everything we observed, joined
     matched_evt: str | None = None   # the EVT body that matched wait_evt (if any)
     evt_wait_ms: int = 0     # ms actually spent waiting for the named EVT
+    # G-H3 — every ERR line observed during the exchange (the first one
+    # also lands in `text` when `ok=False`, but subsequent ERRs were
+    # previously dropped). Bridges that need to surface device errors
+    # iterate this list. Empty when no ERR arrived.
+    errs: list[str] = field(default_factory=list)
 
 
 class ConsoleSession:
@@ -63,6 +68,7 @@ class ConsoleSession:
         write_timeout: float = 1.0,
         no_reset: bool = True,
         settle_ms: int = 50,
+        on_err: Optional[Callable[[str], None]] = None,
     ):
         self.port_name = port
         self.baud = baud
@@ -72,6 +78,15 @@ class ConsoleSession:
         self.settle_ms = settle_ms
         self._ser: serial.Serial | None = None
         self._line_buf = ""
+        # G-H3 — invoked with the ERR body every time an ``ERR:`` line
+        # is seen during ``send()``. The agent-dashboard's pre-v0.2
+        # bridge surfaced this gap: ``send()`` swallowed everything
+        # after the first OK or the first ERR — so if a SECOND ERR
+        # arrived (e.g. the device emitted an async error during a
+        # snapshot stream), the host saw nothing. With this hook the
+        # caller can log or raise. Backward-compatible: ``None`` keeps
+        # the old behaviour (ERRs only land in ``Response.text``).
+        self.on_err = on_err
 
     def __enter__(self) -> "ConsoleSession":
         ser = serial.Serial()
@@ -212,9 +227,23 @@ class ConsoleSession:
 
             m = _ERR_RE.match(ln)
             if m:
-                resp.ok = False
-                resp.text = m.group(1)
-                ack_seen = True
+                err_body = m.group(1)
+                resp.errs.append(err_body)
+                if self.on_err is not None:
+                    try:
+                        self.on_err(err_body)
+                    except Exception:
+                        # A misbehaving callback must not break the
+                        # session — the bridge will see the ERR in
+                        # `resp.errs` either way.
+                        pass
+                # Only the FIRST ERR populates `text` + `ok=False` so
+                # we don't churn the legacy single-shot contract. The
+                # full ERR history is in `resp.errs` (G-H3).
+                if not ack_seen:
+                    resp.ok = False
+                    resp.text = err_body
+                    ack_seen = True
                 # ERR short-circuits: an async EVT after an error is rare
                 # and the caller probably wants to know about the failure
                 # immediately. If a real use case for waiting after ERR
