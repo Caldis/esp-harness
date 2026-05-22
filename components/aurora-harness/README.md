@@ -147,25 +147,46 @@ When a command's reply doesn't fit in a single line — a JSON dump, a
 base64 framebuffer, a CSV table — wrap it:
 
 ```
-device → host   OK: payload follows
+device → host   OK: payload follows tag=<TAG>
                 <TAG>_BEGIN fmt=json bytes=2048
                 {... raw payload ...}
                 <TAG>_END
 ```
 
+The OK line MUST embed `tag=<TAG>` somewhere in its body — this is the
+post-G-4 contract that lets host parsers route the body without grepping
+firmware source. Built-in callers use variations like
+`OK: manifest follows tag=HELP`, `OK: scene manifest follows tag=SCENES`,
+`OK: dump start tag=DUMP w=128 h=128 fmt=RGB565LE`. Host code matches
+`\btag=([A-Z][A-Z0-9_]*)\b` in the OK body to learn the upcoming tag.
+
 API:
 
 ```c
-console_reply_ok("payload follows");                 /* one OK: */
-console_begin_payload("SCENES", "fmt=json");         /* SCENES_BEGIN ... */
-printf("{\"count\":%d, ...}", n);                    /* raw bytes */
+console_reply_ok("scene manifest follows tag=SCENES");    /* explicit tag */
+console_begin_payload("SCENES", "fmt=json");              /* SCENES_BEGIN ... */
+printf("{\"count\":%d, ...}", n);                         /* raw bytes */
 fflush(stdout);
-console_end_payload("SCENES");                       /* SCENES_END */
+console_end_payload("SCENES");                            /* SCENES_END */
 ```
 
 Tags are uppercase, short, scene/command-named. Used in production:
-`HELP`, `SCENES`, `DUMP`. The meta string after the tag is freeform —
-typically `fmt=json bytes=...` so the host parser knows what's coming.
+`HELP`, `SCENES`, `DUMP`, `HEALTH`. The meta string after the tag is
+freeform — typically `fmt=json bytes=...` so the host parser knows
+what's coming.
+
+**Host-side helper**: the toolkit ships
+`esp_harness.core.parser.PayloadFollowsReader`, a state machine that
+consumes the wire line stream and yields one `ReplyEvent(kind="payload",
+tag=..., blob=...)` per multi-line reply. Bridges that want to drain
+ok/err/evt/payload events from one open session use
+`esp_harness.client.open_persistent_session(port)` — both APIs were
+added in v0.2.0 to close gaps G-1, G-3, G-H1, G-H3.
+
+Legacy `OK: payload follows` without an explicit tag still works on the
+host side for backward compatibility (the host infers the tag from the
+following `<TAG>_BEGIN` line), but new firmware should always use the
+explicit form.
 
 ### Built-in commands
 

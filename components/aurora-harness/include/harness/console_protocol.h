@@ -69,11 +69,34 @@ void console_send_evt(const char *fmt, ...);
  *   console_write_raw(buf, len);    // call many times
  *   console_end_payload("DUMP");
  *
- * Convention: any OK: line that precedes a payload block names the
- * tag with `tag=<NAME>` somewhere in the body. Host parsers grep the
- * OK body for `tag=` and use the captured name as their --payload
- * argument — no need to know in advance which command emits which
- * tag (agent-dashboard G-4). */
+ * --- THE EXPLICIT-TAG CONVENTION (post-G-4) -------------------------
+ *
+ * Every OK: line that precedes a multi-line payload block MUST embed
+ * `tag=<NAME>` somewhere in the body. The host-side parser
+ * (esp_harness.core.parser.PayloadFollowsReader) matches the regex
+ * `\btag=([A-Z][A-Z0-9_]*)\b` on the OK body to learn which tag is
+ * about to arrive, so it can route the inner body to the right
+ * consumer. Before this convention existed (gap G-4 in the
+ * agent-dashboard project), consumers had to grep firmware source to
+ * find out that `?help json` emitted HELP_BEGIN — the tag name was
+ * implicit.
+ *
+ * Canonical forms used by built-ins and known consumers:
+ *
+ *   OK: manifest follows tag=HELP        (?help json)
+ *   OK: scene manifest follows tag=SCENES (scene list)
+ *   OK: dump start tag=DUMP w=N h=N ...  (?dump)
+ *   OK: payload follows tag=HEALTH       (dash health, agent-dashboard)
+ *
+ * Free-form key=val pairs after `tag=` are encouraged — the host can
+ * record them in the reply metadata for diagnostics (e.g. w_actual /
+ * w_requested for ?dump when the requested size was downgraded). The
+ * inner `<TAG>_BEGIN` line carries `fmt=` / `bytes=` etc. as a second
+ * key=val payload; both are merged in the host's parse output.
+ *
+ * Legacy form `OK: payload follows` (no `tag=`) is still parsed by
+ * the host helper for backward compatibility, but is discouraged.
+ * -----------------------------------------------------------------*/
 void console_begin_payload(const char *tag, const char *meta);
 void console_write_raw(const char *data, size_t len);
 void console_end_payload(const char *tag);

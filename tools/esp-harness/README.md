@@ -70,10 +70,12 @@ esp-harness build --project D:\Code\esp-harness\examples\aurora --json
 ```
 src/esp_harness/
 ├── cli.py                    # main dispatcher (argparse subcommands)
+├── client.py                 # public persistent-session API (v0.2+)
 ├── exit_codes.py             # 0/10/11/12/20/21/30/40/100 — the contract
 ├── output.py                 # human ↔ --json dual-mode emitter
 ├── core/
 │   ├── idf_runner.py         # invokes idf.py inside EIM venv (cached env)
+│   ├── parser.py             # tokenise_console_line + PayloadFollowsReader
 │   ├── ports.py              # Tier-A (VID 0x303A) + Tier-B bridge IC detection
 │   ├── serial_io.py          # non-interactive capture w/ --until regex
 │   │                         #  + tap injection, DTR no-reset
@@ -87,6 +89,33 @@ src/esp_harness/
     ├── run.py                # composite: build + flash + monitor
     └── screenshot.py         # ?dump → base64 RGB565 → PNG
 ```
+
+### Host-side library API (v0.2+)
+
+For bridges and high-rate test rigs, import `esp_harness.client`
+directly instead of subprocessing the CLI:
+
+```python
+from esp_harness.client import open_persistent_session
+
+with open_persistent_session("COM9") as s:
+    s.on_err(lambda e: print(f"device ERR: {e.text}"))
+    s.write_line('dash snapshot "{...}"')
+    for evt in s.iter_events(timeout=2.0):
+        if evt.kind == "payload" and evt.tag == "HEALTH":
+            print(evt.blob)
+        elif evt.kind == "evt":
+            handle_async_event(evt.text)
+```
+
+The handle uses ONE open connection across all writes and reads
+(closes the ~140 ms per-call startup overhead — gap G-1) and supports
+concurrent writers + EVT readers on the same wire (gap G-3). Multi-
+line `OK: ... follows tag=<TAG>` replies arrive as one
+`ReplyEvent(kind="payload", tag=..., blob=...)` (gap G-H1). ERR
+lines come through as `ReplyEvent(kind="err", ...)` instead of being
+swallowed (gap G-H3). `port` may be a serial name (`COM9`) or a TCP
+endpoint (`127.0.0.1:9876`) — the transport is auto-selected.
 
 The firmware-side counterpart (the device must implement `?dump`, `tap`,
 `?stat` over a console line protocol for tap injection and screenshot
