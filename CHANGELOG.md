@@ -6,6 +6,82 @@ Repo-level milestones. Per-artifact changelogs live in:
 - [`tools/esp-harness/CHANGELOG.md`](./tools/esp-harness/CHANGELOG.md) (toolkit history; preserved from `esp32-harness-toolkit`)
 - [`examples/aurora/CHANGELOG.md`](./examples/aurora/CHANGELOG.md) (Aurora demo history)
 
+## [1.7.3] — 2026-05-22 (round-4 falsification pass)
+
+**Round-4 falsified the v1.7.2 release.** A convergence-verification
+subagent ran each v1.7.2 claim against the code on a fresh clone,
+plus pushed on edges rounds 1-3 didn't cover. Six concrete defects
+were on the v1.7.2 tag and the release notes' "0 round-3 criticals
+open" claim was wrong on two counts.
+
+### Critical (R3-CRIT regression — re-opened by round-4)
+
+- **`esp-harness run` from Git Bash silently flashed stale binaries.**
+  R3 patched `build.py` to detect the MSys/Mingw refusal, but
+  `run.py`'s build phase did its own `idf_runner.run_idf_streaming`
+  call without the check, and `flash.py` likewise. So the R3 trap
+  was alive in the most-used composite command. Both patched.
+- **`esp-harness flash` claimed `ok: true` with `wrote_bytes: 0`** from
+  Git Bash — same root cause, same fix.
+
+### Critical (genuinely new)
+
+- **`esp-harness init` (deprecated alias) scaffolded an unbuildable
+  project.** The template CMake hardcoded `AURORA_HARNESS_DIR` to
+  `../esp32-harness-showcase/components` — a path that hasn't
+  existed since the v1.5 monorepo flip. **`esp-harness init`'s
+  default output had been broken for THREE releases** (v1.5, v1.6,
+  v1.7.0-2) before round-4 caught it. Now forwards to
+  `esp-harness new --component-source link` with a deprecation
+  warning.
+
+### Blocking
+
+- **`?keys press pwr <hold_ms>` never auto-released.** v1.7.2 wired
+  the synth-override expiry check for `boot` and `user` in
+  `keys_task` but omitted the same check for `pwr`. Plus the PMIC
+  IRQ_STATUS_2 handler unconditionally cleared `pwr_pressed` on
+  any latched bit — fighting the synth even when the window was
+  active. Both paths now honour the override.
+- **v1.7.2 tag literally reported as `1.7.1`.** `pyproject.toml`
+  wasn't bumped at tag time. `esp-harness --version` and
+  `manifest.toolkit_version` both returned the stale string from
+  the installed package metadata. Bumped to `1.7.3` here.
+- **`install.ps1` missed the `[test]` extras** — fresh-clone smoke
+  was 19/20 (pytest absent from venv). Now installs with extras.
+- **`esp32-harness-showcase` reference sweep was narrow** — round-4
+  grep returned 24 hits across 18 files; round-3's sweep only
+  touched one. This commit hits idf_component.yml (url + issues),
+  toolkit README + AGENT.md, sim-base/INTEGRATION.md, doctor.py
+  comments, sim.py + screenshot.py docstrings, examples/aurora
+  README + AGENT.md. Predecessor links in the top-level README's
+  "Predecessors" row and similar archived-link contexts are
+  preserved as legitimately historical.
+
+### Smoke gate
+
+**21/21 cases green**. Material changes:
+- Triple-trap case: `build/flash/run refuse MSys/Mingw exit-0`.
+- Keys-press case now exercises all three buttons (boot/user/pwr).
+- `--wait-evt no-match returns timed-out evt_wait_ms (R4-edge)` —
+  proactive pre-emption of round-4's edge tasklist.
+
+### Convergence trajectory
+
+| Round | Defects found | Critical | Released as |
+|---|---|---|---|
+| Author E2E (v1.7.0→1) | 8 | 5 | v1.7.1 |
+| Subagent 1 | 8 | 3 | v1.7.1.x |
+| Subagent 2 | 4 | 3 | v1.7.1.x |
+| Subagent 3 | 10 | 1 | v1.7.2 |
+| Subagent 4 (this) | 6 | 2 (1 regression + 1 fresh) | v1.7.3 |
+
+Pattern observation: round-4 was the first round explicitly given a
+**falsification** mandate (vs verify). That immediately surfaced
+the run/flash R3-regression that the verify-mode rounds 1-3 had
+missed. The 'critical drops to zero' target requires both falsification
+AND verification rounds.
+
 ## [1.7.2] — 2026-05-22 (post-1.7.1 adversarial training pass)
 
 **Adversarial-subagent convergence pass.** Three rounds of evaluation
