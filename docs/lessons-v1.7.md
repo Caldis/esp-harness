@@ -350,6 +350,122 @@ substitute at build/install time, or assert in CI that it tracks.
 
 ---
 
+## Lesson 15 — Defensive patches need to cover ALL entry points to the same dependency
+
+**What broke** (round-4): the R3-CRIT Git Bash silent-build trap was
+patched in `build.py` for v1.7.2, with a smoke gate locking it in.
+But `flash.py` and `run.py` each call `idf_runner.run_idf_streaming`
+directly, and neither had the same MSys-refusal sanity check. So
+`esp-harness flash` from Git Bash returned `ok:true,
+wrote_bytes:0, verified:false`, and `esp-harness run` (the composite
+build+flash+monitor) flashed stale binaries silently — re-opening
+the exact AI-agent footgun R3 was trying to close.
+
+**Root cause**: I patched the entry point I'd been told about
+(`build`), and didn't audit the codebase for "all places that call
+the same external tool." The fact that the smoke gate was 20/20
+green made it feel covered; in reality the smoke only tested the
+patched path.
+
+**Rule**: when fixing a "tool X behaves badly under condition Y"
+bug, grep for ALL uses of tool X and apply the defense uniformly.
+A single-entry-point fix invites the bug back through any other
+entry point.
+
+**Process change**: any new lesson that describes a defense against
+external-tool behaviour must list ALL the entry points the defense
+applies to. Future PRs adding a new entry point must check the
+lesson and apply the defense pattern. The R3 lessons entry will be
+updated to enumerate `build` / `flash` / `run`.
+
+**Smoke**: the v1.7.3 case now exercises all three subcommands in
+a single test, so a regression in any one fails the gate.
+
+---
+
+## Lesson 16 — Deprecated aliases need release-cycle touchpoints too
+
+**What broke** (round-4): `esp-harness init` was the v1.4 alias for
+what is now `esp-harness new`. Since v1.5 (3 releases ago) its
+generated CMakeLists had defaulted `AURORA_HARNESS_DIR` to
+`../esp32-harness-showcase/components` — a path that hasn't existed
+since the v1.5 monorepo flip. The `init.py` file just sat in the
+codebase un-touched. Every release including v1.7.2 shipped a
+deprecated alias that produced a project that did not build.
+
+**Root cause**: "deprecated" became "ignored." No one ran `init`
+during smoke (we ran `new`), so the broken output never surfaced
+until round-4 explicitly tested it.
+
+**Fix**: `init` now forwards to `new --component-source link` with a
+deprecation warning. The forwarding path is exercised by the smoke
+gate, so future drift fails CI.
+
+**Rule**: if a command is deprecated, EITHER:
+  (a) forward it to the current canonical implementation, OR
+  (b) gate it behind a `--allow-deprecated` flag, OR
+  (c) delete it.
+"Keep it around in case" is the trap — code that nobody runs rots.
+
+---
+
+## Lesson 17 — Verify-mode adversarial testing misses regression-pattern bugs
+
+**What broke** (this round itself, vs the previous three): rounds 1, 2,
+and 3 were given verify-mode prompts ("test that the claimed fix
+works"). They confirmed the claimed thing AND probed adjacent
+behaviour. Round 4 was given a **falsification mandate** ("the
+maintainer claims convergence — try to break it"). Round 4
+immediately caught the run/flash MSys regression that the three
+prior verify rounds had missed.
+
+**Why verify misses regressions**: the verify task list directs
+attention at the surfaces that were *fixed*. Regressions live in
+the unfixed surfaces around the patched one. A verifier won't
+naturally probe `flash` when asked to verify a `build` fix.
+
+**Fix**: the convergence model is now **verify rounds AND falsify
+rounds**. After every release with a critical fix, run one
+falsification round explicitly tasked with finding regressions in
+adjacent code paths.
+
+**Smoke**: not directly catchable — this is a process lesson, not a
+code one. Captured in the CHANGELOG's "Pattern observation" line.
+
+---
+
+## Lesson 18 — Version literals drift TWO ways: in code AND in tags
+
+**What broke** (round-4): v1.7.2 was tagged but `pyproject.toml`
+still said `1.7.1`. `esp-harness --version`, manifest, smoke version
+case — all reported `1.7.1` on a freshly-installed v1.7.2 tag.
+
+**Root cause**: I created the git tag with the right name but
+forgot to bump the pyproject's `version =`. The tag and the
+in-source version literal diverged silently.
+
+**Fix**: pyproject bumped at v1.7.3; smoke gate already asserts
+`cli_version == manifest_version != "1.5.0"` and `cli_version`
+starts with `v` (now extended to include the not-stale check).
+
+**Process change**: tagging a release requires THREE moves, in
+order: (1) bump pyproject.toml, (2) commit, (3) `git tag`. If
+step 1 is skipped, step 3 still succeeds and the version drift
+ships. Future release checklist (going into `RELEASING.md`):
+```
+# 1
+sed -i 's/version = "X.Y.Z"/version = "X.Y.Z+1"/' tools/esp-harness/pyproject.toml
+# 2
+git add tools/esp-harness/pyproject.toml CHANGELOG.md
+git commit -m "release(vX.Y.Z+1): ..."
+# 3
+git tag -a vX.Y.Z+1 -m "..."
+# 4 — sanity gate
+[ "$(.venv/bin/esp-harness --version | awk '{print $2}')" = "X.Y.Z+1" ] || exit 1
+```
+
+---
+
 ## Convergence summary (v1.7.0 → v1.7.1 → 1.7.1-post)
 
 ### Phase 1 (v1.7.0 → v1.7.1) — author-driven E2E verification
