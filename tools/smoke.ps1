@@ -216,6 +216,20 @@ if ($SkipDevice) {
         }
         return $true
     }
+    Test-Case "--wait-evt no-match returns timed-out evt_wait_ms (R4-edge)" {
+        # No-match path: regex matches nothing → resp.matched_evt is
+        # null but evt_wait_ms must reflect the wait duration so AI
+        # agents can distinguish 'instant match' (0ms) from 'timed
+        # out' (≈ evt_timeout). Pre-fix: both were 0 ms.
+        $j = & $py -m esp_harness console --cmd "?ping" --port $Port `
+              --wait-evt "DEFINITELY_NEVER_HAPPENS" --evt-timeout 1 `
+              --json 2>&1 | Select-Object -Last 1 | ConvertFrom-Json
+        if ($j.evt_matched) { throw "spurious match against impossible regex" }
+        if ($j.evt_wait_ms -lt 800 -or $j.evt_wait_ms -gt 1500) {
+            throw "evt_wait_ms=$($j.evt_wait_ms) — expected ~1000ms for --evt-timeout 1"
+        }
+        return $true
+    }
     Test-Case "?keys press boot synth (R3-bug regression)" {
         # Round-3 subagent flagged: no synthetic-keypress means AI
         # agents can't exercise button-gated flows. We added

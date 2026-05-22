@@ -257,5 +257,14 @@ class ConsoleSession:
             # uncategorised line (could be log lines from ESP_LOG)
             resp.other_lines.append(ln)
 
+        # On timeout / no-match, record how long we actually waited for
+        # the EVT. Without this evt_wait_ms stayed 0 in both "matched
+        # instantly" and "waited 2s then gave up" cases — undistinguishable
+        # by an AI agent reading the JSON.
+        if evt_re is not None and resp.matched_evt is None \
+                and evt_wait_start is not None:
+            resp.evt_wait_ms = int(
+                (time.monotonic() - evt_wait_start) * 1000)
+
         resp.raw = "\n".join(raw_lines)
         return resp
