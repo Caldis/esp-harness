@@ -21,6 +21,7 @@ from pathlib import Path
 from esp_harness.commands import build as cmd_build
 from esp_harness.core import backtrace as bt
 from esp_harness.core import idf_runner
+from esp_harness.core import patches
 from esp_harness.core import ports as ports_mod
 from esp_harness.core import serial_io
 from esp_harness.exit_codes import (
@@ -92,6 +93,15 @@ def run(args: argparse.Namespace, output: Output) -> int:
             if live_print:
                 print(line)
 
+        # Round-5 caught this: run.py lost build.py's auto-patch + retry
+        # logic. A fresh-checkout AI agent running `esp-harness run`
+        # hit the qmi8658 i2c_master build failure that `build` would
+        # auto-patch. Mirror build.py's behaviour.
+        pre_patches = patches.apply_all(project)
+        applied_pre = [p["name"] for p in pre_patches if p["applied"]]
+        if applied_pre:
+            output.info(f"applied pre-build patches: {', '.join(applied_pre)}")
+
         try:
             rc, lines = idf_runner.run_idf_streaming(
                 ["build"], project_dir=project, on_line=on_line
@@ -99,6 +109,26 @@ def run(args: argparse.Namespace, output: Output) -> int:
         except idf_runner.EnvError as e:
             output.failure(exit_code=100, error=str(e))
             return 100
+
+        # Retry once if the failure matches a known patch signature
+        # (build.py's pattern). Same code-path defence: run is supposed
+        # to be the AI iteration one-shot, so it must absorb the same
+        # transient failures build does.
+        if rc != 0:
+            stderr_blob = "\n".join(lines)
+            if patches.stderr_suggests_retry(stderr_blob):
+                retry_results = patches.apply_all(project)
+                applied = [p["name"] for p in retry_results if p["applied"]]
+                if applied:
+                    output.info(f"applied post-failure patches: {', '.join(applied)}, retrying build")
+                    captured = []
+                    try:
+                        rc, lines = idf_runner.run_idf_streaming(
+                            ["build"], project_dir=project, on_line=on_line
+                        )
+                    except idf_runner.EnvError as e:
+                        output.failure(exit_code=100, error=str(e))
+                        return 100
 
         build_ms = int((time.monotonic() - started) * 1000)
         errors, warnings = cmd_build._parse_errors(lines)  # type: ignore[attr-defined]
@@ -167,15 +197,68 @@ def run(args: argparse.Namespace, output: Output) -> int:
         return 100
 
     flash_ms = int((time.monotonic() - started) * 1000)
+    full = "\n".join(flash_lines)
+    # Round-5 caught this: same MSys/Mingw refusal trap that build.py
+    # and flash.py fail-closed on. run.py's flash phase had its own
+    # idf_runner call without the check, so `run --no-build` from Git
+    # Bash silently no-op'd (idf.py exits 0, esptool never runs, no
+    # bytes flashed, but rc=0 → "ok:true"). Mirror flash.py's two-tier
+    # defence: detect the message AND assert wrote_bytes>0 when rc=0.
+    import re as _re
+    _WROTE = _re.compile(r"Wrote\s+(\d+)\s+bytes", _re.IGNORECASE)
+    _VERIFIED = _re.compile(r"Hash of data verified", _re.IGNORECASE)
+    wrote_bytes = sum(int(m.group(1)) for m in _WROTE.finditer(full))
+    verified = bool(_VERIFIED.search(full))
+
+    if "MSys/Mingw is no longer supported" in full:
+        phases["flash"] = {
+            "ok": False,
+            "port": port,
+            "baud": args.flash_baud,
+            "elapsed_ms": flash_ms,
+            "returncode": rc,
+            "wrote_bytes": wrote_bytes,
+            "verified": verified,
+            "trigger": "MSys/Mingw is no longer supported",
+        }
+        output.failure(
+            exit_code=100,
+            error=("run: idf.py refused to flash inside MSys/Mingw "
+                   "(common with Git Bash on Windows)."),
+            details={"phases": phases,
+                     "total_elapsed_ms": int((time.monotonic() - overall_started) * 1000)},
+            human="Re-run from PowerShell so esptool actually fires.",
+        )
+        return 100
+    if rc == 0 and wrote_bytes == 0:
+        phases["flash"] = {
+            "ok": False,
+            "port": port,
+            "baud": args.flash_baud,
+            "elapsed_ms": flash_ms,
+            "returncode": rc,
+            "wrote_bytes": 0,
+            "verified": verified,
+        }
+        output.failure(
+            exit_code=FLASH_FAILED,
+            error=("run: flash returned 0 but no bytes were written — "
+                   "environment-detection short-circuit."),
+            details={"phases": phases},
+            human="Run `idf.py -p <PORT> flash` directly to see the refusal.",
+        )
+        return FLASH_FAILED
+
     phases["flash"] = {
         "ok": rc == 0,
         "port": port,
         "baud": args.flash_baud,
         "elapsed_ms": flash_ms,
         "returncode": rc,
+        "wrote_bytes": wrote_bytes,
+        "verified": verified,
     }
     if rc != 0:
-        full = "\n".join(flash_lines)
         exit_code = DEVICE_BUSY if ("access" in full.lower() or "permission" in full.lower()) else FLASH_FAILED
         phases["flash"]["tail"] = flash_lines[-30:]
         output.failure(

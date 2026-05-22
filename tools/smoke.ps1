@@ -67,11 +67,21 @@ Test-Case "doctor 8/8 checks pass" {
     return $true
 }
 
-Test-Case "pytest 3/3 integration tests" {
+Test-Case "pytest integration tests (3 passed, or 2 passed + sim skip)" {
+    # Fresh clones without a built sim binary correctly skip
+    # test_sim_diff_all_scenes_pass. Round-5 subagent caught that the
+    # previous gate ('3 passed') failed in that legitimate case.
+    # Accept either: full 3/3 (sim built) or 2 passed + 1 skipped
+    # (sim absent), but never failures.
     $out = & $py -m pytest .\tools\esp-harness\tests\ -q 2>&1
     $last = ($out | Select-Object -Last 3) -join " "
-    if ($last -notmatch "3 passed") { throw "pytest did not report 3 passed: $last" }
-    return $true
+    if ($last -match "failed") {
+        throw "pytest reported failures: $last"
+    }
+    if ($last -match "3 passed") { return $true }
+    if ($last -match "2 passed.*1 skipped") { return $true }
+    if ($last -match "passed.*skipped" -and $last -notmatch "failed") { return $true }
+    throw "pytest output unexpected: $last"
 }
 
 Test-Case "sim diff 13 scenes identical" {
@@ -108,12 +118,26 @@ Test-Case "build/flash/run refuse MSys/Mingw exit-0 (R3-CRIT + v1.7.3 regression
         Write-Host -NoNewline "(skipped: Git Bash not installed) "
         return $true
     }
-    $aurora = "D:\Code\esp-harness\examples\aurora"
+    # Resolve from $RepoRoot — not a hardcoded D:\Code path. Round-5
+    # subagent caught that the previous absolute literal pointed at
+    # the maintainer's dev tree (not the checked-out tree under test),
+    # so the gate exercised the wrong source on any other machine.
+    $aurora = (Join-Path $RepoRoot "examples\aurora")
+    if (-not (Test-Path $aurora)) {
+        throw "examples/aurora not found at $aurora — wrong RepoRoot?"
+    }
     # Resolve to absolute path before swapping separators — $py is
     # relative to the smoke script's cwd, Git Bash will cd elsewhere.
     $pyAbs = (Resolve-Path $py).Path
     $pyPosix = $pyAbs.Replace('\','/')
-    foreach ($sub in @("build", "flash --port COM9", "run --port COM9 --seconds 2")) {
+    # Round-5 also caught that `run --no-build` was an uncovered
+    # invocation form of the composite command. Add it.
+    foreach ($sub in @(
+        "build",
+        "flash --port COM9",
+        "run --port COM9 --seconds 2",
+        "run --no-build --port COM9 --seconds 2"
+    )) {
         $cmd = "cd '$aurora' && '$pyPosix' -m esp_harness $sub --project . --json"
         $out = & $gitBash -lc $cmd 2>&1 | Select-Object -Last 1
         try {
@@ -122,10 +146,18 @@ Test-Case "build/flash/run refuse MSys/Mingw exit-0 (R3-CRIT + v1.7.3 regression
             throw "[$sub] couldn't parse output: $out"
         }
         if ($j.ok -ne $false) { throw "[$sub] expected ok=false, got $($j.ok)" }
-        $trig = $j.trigger
-        if (-not $trig) { $trig = $j.details.trigger }
-        if (-not ($trig -match "MSys|Mingw")) {
-            throw "[$sub] no MSys/Mingw trigger in response: $($j.error)"
+        # Trigger field location varies by command:
+        #   - build: top-level $j.trigger
+        #   - flash: top-level $j.trigger
+        #   - run:   $j.details.phases.flash.trigger OR top-level
+        # Easier: check the error string itself for MSys/Mingw since
+        # all three commands surface the cause in error= for humans.
+        $msys_seen = ($j.trigger -match "MSys|Mingw") -or
+                     ($j.details.trigger -match "MSys|Mingw") -or
+                     ($j.details.phases.flash.trigger -match "MSys|Mingw") -or
+                     ($j.error -match "MSys|Mingw")
+        if (-not $msys_seen) {
+            throw "[$sub] no MSys/Mingw trigger anywhere in response. error=$($j.error)"
         }
     }
     return $true
