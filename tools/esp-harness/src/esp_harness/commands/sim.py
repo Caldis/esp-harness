@@ -1,60 +1,80 @@
-"""`esp-harness sim` — drive the host LVGL simulator.
+"""`esp-harness sim` — drive a host LVGL simulator binary.
 
-The Aurora demo at `examples/aurora/sim/` builds `aurora_sim.exe`
-(or `aurora_sim` on Linux/macOS) — a native binary running selected
-LVGL scenes inside an SDL2 window. Pre-v1.5 the sim lived in the
-now-archived esp32-harness-showcase repo; the legacy path is still
-detected as a fallback. This command wraps that binary so the AI
-loop can snapshot scenes without flashing.
+PROJECT-AGNOSTIC after the G-6 cleanup (May 2026). Pre-G-6 this
+command had Aurora's 13 scene names hardcoded as defaults and auto-
+detected `aurora_sim.exe` if `--bin` was omitted — meaning ANY
+consumer running `esp-harness sim diff` got Aurora's visual gates
+by default. That coupling is now removed: callers must pass --bin
+explicitly, and the scene-name → index map is loaded from a
+`scenes.json` next to the binary (each consumer ships their own).
 
 Subcommands:
   snapshot     start a scene, run for N ms, dump SDL window to BMP, exit.
+  diff         snapshot N scenes + compare to consumer's golden dir.
+  update-golden refresh consumer's goldens.
+  record       capture an animation timeline.
 
-Why BMP, not PNG: lets the sim depend only on SDL2 (already a hard
-dep). PNG conversion is a host concern — Python has Pillow if you want
-it, but most diff tooling handles BMP fine. For visual sharing the
-sim README documents a `[System.Drawing]` PowerShell one-liner.
+Aurora's own configuration lives at
+`examples/aurora/sim/scenes.json`; Aurora's tests pass
+`--bin examples/aurora/sim/build/aurora_sim.exe` explicitly. This
+file is no longer hardcoded with Aurora's content.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
-from esp_harness.exit_codes import GENERIC_ERROR, OK, PROJECT_NOT_FOUND
+from esp_harness.exit_codes import CLI_MISUSE, GENERIC_ERROR, OK, PROJECT_NOT_FOUND
 from esp_harness.output import Output
 
 
-# Index <-> name map for sim binary's register order (sim/main.c).
-# Keep in sync with showcase/sim/main.c::scene_fw_register() block.
-SIM_SCENES = [
-    "halo", "grid", "bloom", "tilt", "pulse", "cell",
-    "keys", "tone", "system", "glow", "spin", "notify", "track",
-]
-
-# Per-scene diff threshold (max fraction of differing pixels). Used only
-# when CLI --threshold is not explicitly given. Animation-driven scenes
-# need looser bounds because the phase varies between snapshot runs.
-SCENE_TOLERANCES = {
-    "pulse": 0.05,   # 3 s breathing ring; phase varies run-to-run
-}
-DEFAULT_THRESHOLD = 0.01   # tight default for static scenes
+# Conservative default if a consumer's scenes.json doesn't set one.
+DEFAULT_THRESHOLD = 0.01
 
 
-def _scene_index(name: str) -> int | None:
+def _load_scene_config(binary: Path) -> dict:
+    """Read `<binary parent>/scenes.json` for the consumer's scene
+    name→index map + per-scene tolerances + default threshold.
+
+    Shape:
+        {"scenes": ["s0", "s1", ...],          # list = positional index map
+         "tolerances": {"sN": 0.05, ...},      # optional per-scene override
+         "default_threshold": 0.01}            # optional global default
+
+    The simulator binary's own `scene_fw_register()` order MUST match
+    the `scenes` list — that's the contract the consumer is asserting
+    by shipping this file alongside the binary.
+
+    Returns an empty default config if the file isn't found. The CLI
+    then fails any sub-command that needs the map with a clear error
+    (see _scene_index)."""
+    # `sim/build/aurora_sim.exe` → look at sim/scenes.json (peer dir).
+    candidate = binary.parent.parent / "scenes.json"
+    if not candidate.exists():
+        return {"scenes": [], "tolerances": {}, "default_threshold": DEFAULT_THRESHOLD}
     try:
-        return SIM_SCENES.index(name)
+        return json.loads(candidate.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {"scenes": [], "tolerances": {}, "default_threshold": DEFAULT_THRESHOLD}
+
+
+def _scene_index(name: str, scenes_list: list[str]) -> int | None:
+    try:
+        return scenes_list.index(name)
     except ValueError:
         return None
 
 
 def _default_golden_dir(binary: Path) -> Path:
-    """Golden dir lives at <showcase>/sim/golden/, where <showcase>
-    contains the sim/build/aurora_sim.exe we found."""
+    """Golden dir is a sibling of the sim binary's `build/` parent —
+    so `sim/build/<bin>` → `sim/golden/`. Each consumer keeps their
+    own goldens; the framework no longer assumes a `<showcase>` layout."""
     return binary.parent.parent / "golden"
 
 
@@ -106,43 +126,47 @@ def _bmp_diff_ratio(a_path: Path, b_path: Path, pixel_tol: int) -> tuple[float, 
     return differing / total if total else 0.0, ""
 
 
-def _default_sim_binary(project: Path | None) -> Path | None:
-    """Locate aurora_sim.exe relative to project. project=None means
-    walk the monorepo layout — toolkit lives at <root>/tools/esp-harness/,
-    Aurora example at <root>/examples/aurora/."""
-    candidates: list[Path] = []
-    if project:
-        candidates.append(project / "sim" / "build" / "aurora_sim.exe")
-        candidates.append(project / "sim" / "build" / "aurora_sim")
-    # Monorepo guess: <root>/examples/aurora/sim/build/...
-    toolkit_root  = Path(__file__).resolve().parents[3]     # tools/esp-harness/
-    monorepo_root = toolkit_root.parents[1]                 # esp-harness/
-    aurora_sim    = monorepo_root / "examples" / "aurora" / "sim" / "build"
-    candidates.append(aurora_sim / "aurora_sim.exe")
-    candidates.append(aurora_sim / "aurora_sim")
-    # Legacy v1.3 layout — older sibling repo, kept for back-compat during migration.
-    legacy_sibling = toolkit_root.parent / "esp32-harness-showcase" / "sim" / "build"
-    candidates.append(legacy_sibling / "aurora_sim.exe")
-    candidates.append(legacy_sibling / "aurora_sim")
-    for c in candidates:
-        if c.exists():
-            return c
+def _resolve_sim_binary(args_bin: Path | None,
+                         args_project: Path | None) -> Path | None:
+    """Find the sim binary for THIS invocation. No auto-detect of
+    Aurora — each consumer points explicitly via --bin (preferred)
+    or --project (where `sim/build/*` is conventional). Returns None
+    if nothing matches; the caller turns that into a user-visible
+    error with a clear "pass --bin" hint."""
+    if args_bin:
+        return args_bin if args_bin.exists() else None
+    if args_project:
+        for sub in ("sim/build",):
+            sim_dir = args_project / sub
+            if not sim_dir.exists():
+                continue
+            for candidate in sim_dir.iterdir():
+                # Pick the first executable file in sim/build/.
+                if candidate.is_file() and os.access(candidate, os.X_OK):
+                    return candidate
+                if candidate.suffix.lower() == ".exe" and candidate.is_file():
+                    return candidate
     return None
 
 
 def add_subparser(sub, add_common_flags) -> None:
     p = sub.add_parser(
         "sim",
-        help="Drive the host LVGL simulator (snapshot, etc).",
-        description="Wraps the host build of the showcase sim/ binary.",
+        help="Drive a host LVGL simulator binary (consumer's own sim).",
+        description=(
+            "Wraps the host build of a consumer project's LVGL simulator. "
+            "Project-agnostic — point --bin at the simulator binary, or --project "
+            "at the project root (the toolkit looks for sim/build/*). The scene "
+            "name->index map is loaded from `scenes.json` next to the binary."
+        ),
     )
     p.add_argument(
         "--bin", type=Path, default=None,
-        help="Path to aurora_sim.exe (auto-detected via --project or sibling-repo guess).",
+        help="Path to the consumer's sim binary (e.g. examples/aurora/sim/build/aurora_sim.exe).",
     )
     p.add_argument(
         "--project", type=Path, default=None,
-        help="Showcase project root (contains sim/build/aurora_sim.exe).",
+        help="Consumer project root (toolkit searches sim/build/* for the binary).",
     )
     sp = p.add_subparsers(dest="sim_subcommand", metavar="<subcommand>")
     sp.required = True
@@ -166,14 +190,16 @@ def add_subparser(sub, add_common_flags) -> None:
         help="Snapshot N scenes, compare to golden/, exit 1 if any regresses.",
     )
     sd.add_argument("--scenes", required=True,
-                    help="Comma-separated scene names matching scene_*.c (no scene_ prefix). "
-                         "e.g. halo,grid,bloom,tilt,system")
+                    help="Comma-separated scene names matching the project's "
+                         "scenes.json `scenes` list (no scene_ prefix).")
     sd.add_argument("--golden", type=Path, default=None,
-                    help="Golden directory (default: <showcase>/sim/golden).")
+                    help="Golden directory (default: <project>/sim/golden alongside the bin).")
     sd.add_argument("--ms", type=int, default=500,
                     help="Settle time per scene snapshot.")
     sd.add_argument("--threshold", type=float, default=None,
-                    help="Max fraction of differing pixels per scene. If omitted, uses per-scene table (SCENE_TOLERANCES in sim.py); default fallback is 0.01.")
+                    help="Max fraction of differing pixels per scene. If omitted, "
+                         "uses per-scene tolerances from the project's scenes.json; "
+                         "default fallback is 0.01.")
     sd.add_argument("--pixel-tol", type=int, default=8,
                     help="Per-channel tolerance before a pixel counts as different (0-255, default 8).")
     sd.add_argument("--save-diffs", type=Path, default=None,
@@ -188,7 +214,7 @@ def add_subparser(sub, add_common_flags) -> None:
     su.add_argument("--scenes", required=True,
                     help="Comma-separated scene names to refresh.")
     su.add_argument("--golden", type=Path, default=None,
-                    help="Golden directory (default: <showcase>/sim/golden).")
+                    help="Golden directory (default: <project>/sim/golden alongside the bin).")
     su.add_argument("--ms", type=int, default=500)
     add_common_flags(su)
 
@@ -197,11 +223,10 @@ def add_subparser(sub, add_common_flags) -> None:
         "record",
         help="Capture a sequence of snapshots across an animation timeline.",
         description=(
-            "Spawns aurora_sim N times against the same scene, each with a "
-            "progressively longer --exit-after-ms, capturing the animation "
+            "Spawns the sim binary N times against the same scene, each with "
+            "a progressively longer --exit-after-ms, capturing the animation "
             "at deterministic phase points. Output: <out>/frame_000.bmp, "
-            "frame_001.bmp, ...  Use this on animated scenes (Pulse "
-            "breathes, Spin gyro-bars wiggle) to review motion."
+            "frame_001.bmp, ...  Use this on animated scenes to review motion."
         ),
     )
     sr.add_argument("--scene", required=True,
@@ -218,17 +243,24 @@ def add_subparser(sub, add_common_flags) -> None:
 
 
 def run(args: argparse.Namespace, output: Output) -> int:
-    binary = args.bin or _default_sim_binary(args.project)
+    binary = _resolve_sim_binary(args.bin, args.project)
     if not binary or not binary.exists():
         output.failure(
             exit_code=PROJECT_NOT_FOUND,
             error=(
-                "aurora_sim binary not found. Build it via "
-                "examples/aurora/sim/CMakeLists.txt (see that "
-                "directory's README), or pass --bin PATH explicitly."
+                "sim binary not found. Pass --bin PATH explicitly, or "
+                "--project PROJECT_ROOT pointing at a tree with "
+                "sim/build/<binary>. The framework no longer assumes "
+                "any default consumer (post G-6 cleanup, May 2026)."
             ),
         )
         return PROJECT_NOT_FOUND
+
+    # Load the project's scenes.json so we can map scene-name → index.
+    cfg = _load_scene_config(binary)
+    scenes_list = cfg.get("scenes", [])
+    scene_tolerances = cfg.get("tolerances", {})
+    cfg_default_threshold = cfg.get("default_threshold", DEFAULT_THRESHOLD)
 
     if args.sim_subcommand == "snapshot":
         ok, err = _run_snapshot(binary, args.scene, args.out, args.ms)
@@ -248,13 +280,24 @@ def run(args: argparse.Namespace, output: Output) -> int:
     indices: list[tuple[str, int]] = []
     golden_dir = None
     if args.sim_subcommand in ("diff", "update-golden"):
+        if not scenes_list:
+            output.failure(
+                exit_code=PROJECT_NOT_FOUND,
+                error=(
+                    f"no scenes.json next to {binary} — the project's "
+                    "scene name->index map is required for diff/update-golden. "
+                    "Create <project>/sim/scenes.json with at minimum: "
+                    "{\"scenes\": [\"<your_scene_0>\", ...]}"
+                ),
+            )
+            return PROJECT_NOT_FOUND
         names = [n.strip() for n in args.scenes.split(",") if n.strip()]
         for n in names:
-            idx = _scene_index(n)
+            idx = _scene_index(n, scenes_list)
             if idx is None:
                 output.failure(
                     exit_code=GENERIC_ERROR,
-                    error=f"unknown scene '{n}'. Known: {', '.join(SIM_SCENES)}",
+                    error=f"unknown scene '{n}'. Known (from scenes.json): {', '.join(scenes_list)}",
                 )
                 return GENERIC_ERROR
             indices.append((n, idx))
@@ -309,7 +352,7 @@ def run(args: argparse.Namespace, output: Output) -> int:
                     output.failure(exit_code=GENERIC_ERROR, error=note)
                     return GENERIC_ERROR
                 thresh = (args.threshold if args.threshold is not None
-                          else SCENE_TOLERANCES.get(name, DEFAULT_THRESHOLD))
+                          else scene_tolerances.get(name, cfg_default_threshold))
                 passed = ratio <= thresh
                 entry = {
                     "scene": name,
@@ -352,11 +395,21 @@ def run(args: argparse.Namespace, output: Output) -> int:
         try:
             scene_idx = int(args.scene)
         except ValueError:
-            scene_idx = _scene_index(args.scene)
+            if not scenes_list:
+                output.failure(
+                    exit_code=PROJECT_NOT_FOUND,
+                    error=(
+                        f"can't resolve scene name '{args.scene}' — no "
+                        f"scenes.json next to {binary}. Use numeric --scene N "
+                        "or ship a scenes.json."
+                    ),
+                )
+                return PROJECT_NOT_FOUND
+            scene_idx = _scene_index(args.scene, scenes_list)
             if scene_idx is None:
                 output.failure(
                     exit_code=GENERIC_ERROR,
-                    error=f"unknown scene '{args.scene}'. Known: {', '.join(SIM_SCENES)}",
+                    error=f"unknown scene '{args.scene}'. Known: {', '.join(scenes_list)}",
                 )
                 return GENERIC_ERROR
         args.out.mkdir(parents=True, exist_ok=True)

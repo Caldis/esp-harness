@@ -210,10 +210,15 @@ def _check_harness_component() -> dict:
                 "required": False,
                 "note": "legacy sibling layout (pre v1.5)"}
 
-    return {"name": "aurora-harness", "status": "warn",
+    # Post-G-6: aurora-harness is just ONE possible consumer of the
+    # framework, no longer a required default. Report it as info, not
+    # warn — non-Aurora projects shouldn't see a yellow line in
+    # doctor just because Aurora isn't checked out.
+    return {"name": "aurora-harness", "status": "info",
             "required": False,
-            "note": "aurora-harness component not found — pass --bin / --project explicitly to sim / init",
-            "hint": f"git clone https://github.com/Caldis/esp-harness {monorepo_root.parent}"}
+            "note": ("aurora-harness component not found — only needed if you're "
+                     "running Aurora's sim/example tests. Other consumer "
+                     "projects don't require it.")}
 
 
 def add_subparser(sub, add_common_flags) -> None:

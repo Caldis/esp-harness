@@ -1,0 +1,22 @@
+{
+  "_comment": "Aurora's scene -> index map. Mirrors examples/aurora/sim/main.c::scene_fw_register() order. Other consumers ship their OWN scenes.json next to their sim binary; the toolkit reads it via `esp-harness sim` to know what indices to dispatch.",
+  "scenes": [
+    "halo",
+    "grid",
+    "bloom",
+    "tilt",
+    "pulse",
+    "cell",
+    "keys",
+    "tone",
+    "system",
+    "glow",
+    "spin",
+    "notify",
+    "track"
+  ],
+  "tolerances": {
+    "pulse": 0.05
+  },
+  "default_threshold": 0.01
+}

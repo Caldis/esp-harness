@@ -174,9 +174,13 @@ TOOLKIT_COMMANDS: list[dict[str, object]] = [
             "[--bin PATH]", "[--project DIR]",
         ],
         "exit_codes": [0, 1, 21],
-        "notes": "Runs aurora_sim.exe headlessly. snapshot writes one BMP. diff compares N scenes against sim/golden/, exits 1 on regression. update-golden refreshes baseline after intentional UI changes. Scene names match sim/main.c register order: " + ", ".join([
-            "halo","grid","bloom","tilt","pulse","cell","keys","tone","system","glow","spin",
-        ]) + ".",
+        "notes": ("Runs the consumer project's sim binary headlessly. "
+                  "snapshot writes one BMP. diff compares N scenes against "
+                  "<project>/sim/golden/, exits 1 on regression. update-golden "
+                  "refreshes baseline after intentional UI changes. Scene names "
+                  "and indices come from <project>/sim/scenes.json (each consumer "
+                  "ships their own); the framework no longer hardcodes any "
+                  "consumer's scene list."),
     },
 ]
 
