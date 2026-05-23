@@ -1,4 +1,7 @@
-# aurora-harness — line-protocol console + LVGL scene framework.
+# esp-harness-core — line-protocol console + LVGL scene framework.
+# (Renamed from `aurora-harness` in esp-harness v3.0. The name change
+# reflects the truth: the library is generic framework runtime, not
+# Aurora-specific. Aurora was just the first consumer.)
 #
 # Two cohesive modules that anchor the AI-driven dev loop:
 #

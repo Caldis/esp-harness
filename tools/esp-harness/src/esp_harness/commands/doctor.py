@@ -183,42 +183,47 @@ def _check_serial_port() -> dict:
 
 
 def _check_harness_component() -> dict:
-    """Locate components/aurora-harness/. In the v1.5+ monorepo it's a
-    peer at <root>/components/aurora-harness/. Pre-v1.5 it lived as a
-    sibling repo (the now-archived esp32-harness-showcase); the
-    fallback probe is kept for users still on that layout, but it
-    will not exist on any current install."""
+    """Locate the C runtime component. v3.0+ it's named
+    `esp-harness-core`; v1.5 - v2.x it was `aurora-harness` (renamed
+    because the library was never Aurora-specific). Pre-v1.5 it lived
+    in the now-archived esp32-harness-showcase sibling repo.
+
+    Each layer probed in order; first match wins. All are non-required
+    — modern consumer projects vendor the component independently."""
     toolkit_root  = Path(__file__).resolve().parents[3]    # tools/esp-harness/
     monorepo_root = toolkit_root.parents[1]                # esp-harness/
 
-    # v1.5 monorepo first
-    monorepo_comp = monorepo_root / "components" / "aurora-harness"
-    if monorepo_comp.exists():
-        return {"name": "aurora-harness", "status": "ok",
-                "path": str(monorepo_comp),
+    # v3.0+ canonical name
+    new_comp = monorepo_root / "components" / "esp-harness-core"
+    if new_comp.exists():
+        return {"name": "esp-harness-core", "status": "ok",
+                "path": str(new_comp),
                 "required": False,
-                "note": f"monorepo layout — auto-detect from {monorepo_root}"}
+                "note": f"monorepo layout (v3.0+ name) — found at {monorepo_root}"}
 
-    # Legacy v1.3 sibling layout (archived repo). Kept as a graceful
-    # fallback so users with stale checkouts get a "found at legacy
-    # path" rather than "missing". Anyone landing here today should
-    # migrate to the monorepo layout.
+    # v1.5 - v2.x legacy name
+    old_comp = monorepo_root / "components" / "aurora-harness"
+    if old_comp.exists():
+        return {"name": "esp-harness-core", "status": "ok",
+                "path": str(old_comp),
+                "required": False,
+                "note": ("found component under legacy name 'aurora-harness' — "
+                         "rename to 'esp-harness-core' (esp-harness v3.0 fix)")}
+
+    # Pre-v1.5 sibling layout — kept for users with stale checkouts.
     legacy_sibling = toolkit_root.parent / "esp32-harness-showcase" / "components" / "aurora-harness"
     if legacy_sibling.exists():
-        return {"name": "aurora-harness", "status": "ok",
+        return {"name": "esp-harness-core", "status": "ok",
                 "path": str(legacy_sibling),
                 "required": False,
-                "note": "legacy sibling layout (pre v1.5)"}
+                "note": "pre-v1.5 sibling layout — migrate to monorepo"}
 
-    # Post-G-6: aurora-harness is just ONE possible consumer of the
-    # framework, no longer a required default. Report it as info, not
-    # warn — non-Aurora projects shouldn't see a yellow line in
-    # doctor just because Aurora isn't checked out.
-    return {"name": "aurora-harness", "status": "info",
+    return {"name": "esp-harness-core", "status": "info",
             "required": False,
-            "note": ("aurora-harness component not found — only needed if you're "
-                     "running Aurora's sim/example tests. Other consumer "
-                     "projects don't require it.")}
+            "note": ("esp-harness-core C component not found in this monorepo. "
+                     "Only needed for projects that vendor it via "
+                     "EXTRA_COMPONENT_DIRS; standalone toolkit usage doesn't "
+                     "require it.")}
 
 
 def add_subparser(sub, add_common_flags) -> None:

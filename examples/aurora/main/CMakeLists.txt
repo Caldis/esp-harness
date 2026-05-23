@@ -2,8 +2,9 @@ idf_component_register(
     SRCS
         "aurora_main.c"
         "ui_shell.c"
-        # console_protocol + scene_framework moved to
-        # components/aurora-harness/ in v1.2 — pulled in via REQUIRES.
+        # console_protocol + scene_framework live in
+        # components/esp-harness-core/ (renamed from aurora-harness in
+        # esp-harness v3.0). Pulled in via REQUIRES.
         # harness_commands.c stays here as Aurora-specific peripheral glue.
         "harness/harness_commands.c"
         "scenes/scene_halo.c"
@@ -47,8 +48,8 @@ idf_component_register(
         lvgl__lvgl
         esp32_s3_touch_amoled_2_16
         # Reusable scaffold layer: line protocol + scene framework.
-        # See components/aurora-harness/README.md.
-        aurora-harness
+        # See components/esp-harness-core/README.md.
+        esp-harness-core
         # esp_driver_i2c here is upstream-bug workaround: waveshare/qmi8658
         # only REQUIRES "driver" (the v5-era umbrella) but v6 split out
         # i2c_master into esp_driver_i2c. Forcing it visible main-wide
