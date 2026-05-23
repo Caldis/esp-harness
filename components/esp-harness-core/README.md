@@ -1,4 +1,4 @@
-# aurora-harness
+# esp-harness-core
 
 [![component](https://img.shields.io/badge/component-aurora--harness-b8431a)](./idf_component.yml)
 [![version](https://img.shields.io/badge/version-1.4.0-1c1814)](./idf_component.yml)
@@ -92,14 +92,14 @@ manually:
 list(APPEND EXTRA_COMPONENT_DIRS path/to/esp-harness/components)
 ```
 
-Then add `aurora-harness` to your `main` component's `REQUIRES`:
+Then add `esp-harness-core` to your `main` component's `REQUIRES`:
 
 ```cmake
 idf_component_register(
     SRCS "..."
     REQUIRES
         lvgl__lvgl
-        aurora-harness
+        esp-harness-core
         # ...your other deps
 )
 ```
@@ -109,7 +109,7 @@ now resolve.
 
 ### Why the `harness/` include prefix
 
-`aurora-harness` is the component name; `harness/` is the include
+`esp-harness-core` is the component name; `harness/` is the include
 namespace. Two reasons:
 
 1. Avoids collision with any other `console_protocol.h` your project
@@ -329,7 +329,7 @@ firmware source.
 ## Default command set (`harness_default_register`)
 
 One opt-in call after `console_protocol_init()` gives you the standard
-console surface every aurora-harness consumer should have:
+console surface every esp-harness-core consumer should have:
 
 ```c
 console_protocol_init();
@@ -447,7 +447,7 @@ boilerplate.
 ## File layout
 
 ```
-components/aurora-harness/
+components/esp-harness-core/
 ├── CMakeLists.txt            ESP-IDF component manifest
 ├── idf_component.yml         (Component Registry metadata, not published yet)
 ├── README.md                 you are here

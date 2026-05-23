@@ -1,6 +1,6 @@
-# Porting aurora-harness to a new board
+# Porting esp-harness-core to a new board
 
-`aurora-harness` is intentionally board-agnostic. The whole hard
+`esp-harness-core` is intentionally board-agnostic. The whole hard
 dependency on a specific BSP is **two function symbols**:
 
 ```c
@@ -15,7 +15,7 @@ phase resolves the symbols automatically.
 
 The remainder of this document is for projects that:
 - Use a custom hand-rolled display driver (no BSP component), **or**
-- Want to bring up aurora-harness on a board not yet covered by a
+- Want to bring up esp-harness-core on a board not yet covered by a
   vendor BSP, **or**
 - Are running on the host simulator (`sim/`) which uses
   `sim/mock_bsp.{h,c}` as a no-op implementation.
@@ -81,7 +81,7 @@ idf_component_register(
     INCLUDE_DIRS "." "scenes"
     REQUIRES
         lvgl__lvgl
-        aurora-harness
+        esp-harness-core
         # NOTE: no BSP REQUIRES line — your shim provides the symbols.
     PRIV_REQUIRES nvs_flash esp_timer
 )
@@ -109,9 +109,9 @@ idf_component_register(
 ```
 
 Then add `myboard-bsp` to your `main/CMakeLists.txt`'s `REQUIRES`
-(not `PRIV_REQUIRES` — aurora-harness needs to see the symbols too).
+(not `PRIV_REQUIRES` — esp-harness-core needs to see the symbols too).
 
-Either way, **do not list `aurora-harness` and a different BSP
+Either way, **do not list `esp-harness-core` and a different BSP
 component both in REQUIRES** — they'd both define `bsp_display_lock`
 and the link fails with a "multiple definition" error.
 
@@ -121,16 +121,16 @@ and the link fails with a "multiple definition" error.
 
 The LVGL setup itself is your board's responsibility (display driver,
 buffer allocation, indev / touch). Once `lv_screen_active()` returns a
-valid object, aurora-harness's `scene_fw_init(lv_screen_active())`
+valid object, esp-harness-core's `scene_fw_init(lv_screen_active())`
 takes over from there.
 
 ### Convention: where your BSP's public symbols live
 
-aurora-harness's scenes and the generated `esp-harness new` template
+esp-harness-core's scenes and the generated `esp-harness new` template
 follow the Espressif **`esp-bsp` family convention**:
 
 - Your BSP component exposes a public header at `include/bsp/esp-bsp.h`.
-  The aurora-harness scenes `#include "bsp/esp-bsp.h"` to get the
+  The esp-harness-core scenes `#include "bsp/esp-bsp.h"` to get the
   display init + brightness control entry points (not just the
   lock — `bsp_display_brightness_set` etc).
 - A `bsp_display_start(void)` entry point initialises LVGL, allocates
@@ -159,7 +159,7 @@ void app_main(void)
     my_register_lvgl_touch();
     lv_tick_set_cb(...);
 
-    /* 2. aurora-harness — board-agnostic from here on. */
+    /* 2. esp-harness-core — board-agnostic from here on. */
     console_protocol_init();
     harness_default_register();
 
@@ -181,7 +181,7 @@ already held — see `scene_change_listener_t` in `scene_framework.h`.
 
 ---
 
-## What aurora-harness *doesn't* assume
+## What esp-harness-core *doesn't* assume
 
 - **A specific display resolution.** The framework asks
   `lv_obj_get_width(scr)` at runtime; everything else flows from there.
@@ -225,4 +225,4 @@ pattern" for the recipe.
 - [ ] `?stat` returns JSON; `scene list` returns the manifest
 - [ ] `?dump w=128` returns a base64 payload
 
-When all eight are green you have aurora-harness fully ported.
+When all eight are green you have esp-harness-core fully ported.

@@ -19,14 +19,14 @@ on:
   push:
     branches: [master]
     paths:
-      - "components/aurora-harness/**"
+      - "components/esp-harness-core/**"
       - "sim-base/**"
       - "examples/aurora/**"
       - "tools/esp-harness/**"
       - ".github/workflows/sim-diff.yml"
   pull_request:
     paths:
-      - "components/aurora-harness/**"
+      - "components/esp-harness-core/**"
       - "sim-base/**"
       - "examples/aurora/**"
       - "tools/esp-harness/**"

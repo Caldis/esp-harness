@@ -1,5 +1,5 @@
 /*
- * harness/bsp_iface — the minimal BSP surface aurora-harness depends on.
+ * harness/bsp_iface — the minimal BSP surface esp-harness-core depends on.
  *
  * The component itself uses only two functions: the LVGL mutex
  * lock/unlock pair. Every Espressif-style BSP (`esp-bsp`, the various
@@ -7,13 +7,13 @@
  * signatures, so consuming projects pull in their BSP component as a
  * REQUIRES and these symbols resolve at link time.
  *
- * If you are bringing aurora-harness up on a board WITHOUT one of those
+ * If you are bringing esp-harness-core up on a board WITHOUT one of those
  * BSPs, simply define matching functions yourself. They typically wrap
  * a recursive FreeRTOS mutex that the LVGL task itself holds during
  * its callbacks. See sim/mock_bsp.{c,h} for the no-op stub used in the
  * host simulator build.
  *
- * See components/aurora-harness/PORTING.md for the full multi-board
+ * See components/esp-harness-core/PORTING.md for the full multi-board
  * walkthrough.
  */
 #pragma once

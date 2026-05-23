@@ -1,4 +1,4 @@
-# Releasing aurora-harness
+# Releasing esp-harness-core
 
 Process for cutting a new component version + publishing to the
 [ESP-IDF Component Registry](https://components.espressif.com/).
@@ -28,13 +28,13 @@ Run from the showcase repo root.
    - `esp-harness test` 3/3 PASS
 
 2. **Bump versions** (both must match)
-   - `components/aurora-harness/idf_component.yml::version`
+   - `components/esp-harness-core/idf_component.yml::version`
    - `CHANGELOG.md` add a `## [X.Y.Z] — YYYY-MM-DD` section
 
 3. **Commit + tag**
    ```bash
-   git add components/aurora-harness/idf_component.yml CHANGELOG.md
-   git commit -m "release: aurora-harness vX.Y.Z"
+   git add components/esp-harness-core/idf_component.yml CHANGELOG.md
+   git commit -m "release: esp-harness-core vX.Y.Z"
    git tag -a vX.Y.Z -m "vX.Y.Z release notes summary"
    git push origin master --tags
    ```
@@ -44,8 +44,8 @@ Run from the showcase repo root.
    ```bash
    # PowerShell:
    $env:IDF_COMPONENT_API_TOKEN = "<your-token>"
-   cd components/aurora-harness
-   compote component upload --name aurora-harness --namespace caldis
+   cd components/esp-harness-core
+   compote component upload --name esp-harness-core --namespace caldis
    ```
    `compote` ships with ESP-IDF's component manager (`pip install
    idf-component-manager` if you don't have it).
@@ -55,7 +55,7 @@ Run from the showcase repo root.
    - In its `main/idf_component.yml`, depend on the new published version:
      ```yaml
      dependencies:
-       caldis/aurora-harness: "^X.Y.Z"
+       caldis/esp-harness-core: "^X.Y.Z"
      ```
    - `esp-harness build` — should pull the component from registry
      instead of needing `EXTRA_COMPONENT_DIRS`.
