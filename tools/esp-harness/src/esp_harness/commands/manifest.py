@@ -133,7 +133,12 @@ TOOLKIT_COMMANDS: list[dict[str, object]] = [
         "summary": "Standardised performance snapshot (fps, heap, audio loopback, BLE rate, SD speed, sensor noise).",
         "args": ["[--quick]", "[--out PATH.json]", "[--baseline]", "[--compare]"],
         "exit_codes": [0, 1, 10, 11],
-        "notes": "Diff snapshots across firmware versions to spot regressions. --baseline locks current run as package baseline (data/baseline.json); --compare diffs current vs baseline and exits 1 on threshold breach. See AGENT.md §6.5.",
+        "notes": ("Diff snapshots across firmware versions to spot regressions. "
+                  "--baseline saves the current run as the PROJECT's baseline "
+                  "at <project>/.esp-harness/baseline.json (override with "
+                  "--baseline-path). --compare diffs current vs that baseline "
+                  "and exits 1 on threshold breach. Framework no longer ships "
+                  "any consumer's perf numbers."),
     },
     {
         "name": "test",

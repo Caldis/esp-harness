@@ -34,7 +34,33 @@ from esp_harness.exit_codes import (
 from esp_harness.output import Output
 
 
-BASELINE_PATH = Path(__file__).resolve().parent.parent / "data" / "baseline.json"
+# Default baseline lives PER-PROJECT, not bundled with the toolkit.
+# Post-G-6 cleanup (May 2026): the toolkit no longer ships any
+# consumer's perf numbers as the universal baseline. Pre-G-6 the
+# bundled `<pkg>/data/baseline.json` was Aurora's perf snapshot —
+# any consumer running `bench --compare` was comparing themselves
+# against Aurora. Now each consumer's baseline lives at
+# `<project>/.esp-harness/baseline.json` (auto-resolved when --project
+# is given) or wherever `--baseline-path` points.
+DEFAULT_BASELINE_REL = ".esp-harness/baseline.json"
+
+
+def _resolve_baseline_path(args) -> Path | None:
+    """Find the baseline file for this invocation.
+
+    Priority:
+      1. explicit --baseline-path PATH
+      2. <args.project>/.esp-harness/baseline.json (if --project given)
+      3. <cwd>/.esp-harness/baseline.json
+    Returns None if no candidate exists (caller decides how to handle).
+    """
+    explicit = getattr(args, "baseline_path", None)
+    if explicit:
+        return Path(explicit)
+    project = getattr(args, "project", None)
+    if project:
+        return Path(project) / DEFAULT_BASELINE_REL
+    return Path.cwd() / DEFAULT_BASELINE_REL
 
 
 # Regression check: (path, direction, threshold_pct).
@@ -125,18 +151,28 @@ def add_subparser(sub, add_common_flags) -> None:
     p.add_argument(
         "--baseline", action="store_true",
         help=(
-            "Save this run as the package baseline "
-            f"(default: {BASELINE_PATH.relative_to(BASELINE_PATH.parents[2])}). "
-            "Use after a verified-good firmware to lock numbers."
+            "Save this run as the PROJECT'S baseline at "
+            "<project>/.esp-harness/baseline.json (override location with "
+            "--baseline-path). Use after a verified-good firmware to lock "
+            "numbers. Framework no longer ships any consumer's baseline."
         ),
     )
     p.add_argument(
         "--compare", action="store_true",
         help=(
-            "Diff this run against the package baseline. Returns exit code "
-            "1 if any metric regresses beyond its threshold; 0 otherwise. "
-            "Combine with --quick for CI smoke checks."
+            "Diff this run against the project's baseline. Returns exit "
+            "code 1 if any metric regresses beyond its threshold; 0 otherwise. "
+            "Combine with --quick for CI smoke checks. Baseline must exist "
+            "(run `bench --baseline` once first)."
         ),
+    )
+    p.add_argument(
+        "--baseline-path", type=str, default=None,
+        help="Explicit baseline JSON path (overrides default <project>/.esp-harness/baseline.json).",
+    )
+    p.add_argument(
+        "--project", type=str, default=None,
+        help="Project root; baseline resolves to <project>/.esp-harness/baseline.json.",
     )
     add_common_flags(p)
 
@@ -290,25 +326,33 @@ def run(args: argparse.Namespace, output: Output) -> int:
         except Exception as e:
             output.info(f"warn: failed to write --out {args.out}: {e}")
 
-    # --baseline: persist this run as the package baseline.
+    # --baseline: persist this run as the PROJECT's baseline.
     if args.baseline:
+        baseline_path = _resolve_baseline_path(args)
         try:
-            BASELINE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            BASELINE_PATH.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
-            output.info(f"baseline saved to {BASELINE_PATH}")
+            baseline_path.parent.mkdir(parents=True, exist_ok=True)
+            baseline_path.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+            output.info(f"baseline saved to {baseline_path}")
         except Exception as e:
             output.failure(exit_code=GENERIC_ERROR,
                            error=f"failed to write baseline: {e}")
             return GENERIC_ERROR
 
-    # --compare: diff against the package baseline.
+    # --compare: diff against the project's baseline.
     if args.compare:
-        if not BASELINE_PATH.exists():
-            output.failure(exit_code=GENERIC_ERROR,
-                           error=f"no baseline at {BASELINE_PATH} (run --baseline first)")
+        baseline_path = _resolve_baseline_path(args)
+        if not baseline_path.exists():
+            output.failure(
+                exit_code=GENERIC_ERROR,
+                error=(
+                    f"no baseline at {baseline_path} (run `bench --baseline` "
+                    "once on a verified-good build, or pass --baseline-path). "
+                    "Framework no longer ships any consumer's baseline."
+                ),
+            )
             return GENERIC_ERROR
         try:
-            baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+            baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
         except Exception as e:
             output.failure(exit_code=GENERIC_ERROR,
                            error=f"failed to read baseline: {e}")
