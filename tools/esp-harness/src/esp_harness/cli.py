@@ -53,6 +53,7 @@ from esp_harness.commands import screenshot as cmd_screenshot
 from esp_harness.commands import sim as cmd_sim
 from esp_harness.commands import tap as cmd_tap
 from esp_harness.commands import test as cmd_test
+from esp_harness.commands import list_modules as cmd_list_modules
 from esp_harness.exit_codes import CLI_MISUSE, GENERIC_ERROR
 from esp_harness.output import Output
 
@@ -79,7 +80,8 @@ def build_parser() -> argparse.ArgumentParser:
     for mod in (cmd_port, cmd_build, cmd_flash, cmd_monitor, cmd_run, cmd_tap,
                 cmd_screenshot, cmd_audio, cmd_console, cmd_manifest,
                 cmd_backtrace, cmd_bench, cmd_sim, cmd_new, cmd_init,
-                cmd_create, cmd_add, cmd_remove, cmd_doctor, cmd_test, cmd_adversarial):
+                cmd_create, cmd_add, cmd_remove, cmd_doctor, cmd_test, cmd_adversarial,
+                cmd_list_modules):
         mod.add_subparser(sub, _add_common_flags)
 
     return parser
@@ -136,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
             exit_code = cmd_test.run(args, output)
         elif args.command == "adversarial":
             exit_code = cmd_adversarial.run(args, output)
+        elif args.command == "list-modules":
+            exit_code = cmd_list_modules.run(args, output)
         else:
             parser.print_help(sys.stderr)
             exit_code = CLI_MISUSE
