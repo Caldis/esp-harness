@@ -33,6 +33,8 @@ if sys.platform == "win32":
 
 from esp_harness import __version__
 from esp_harness.commands import adversarial as cmd_adversarial
+from esp_harness.commands import cycle as cmd_cycle
+from esp_harness.commands import verify as cmd_verify
 from esp_harness.commands import audio as cmd_audio
 from esp_harness.commands import backtrace as cmd_backtrace
 from esp_harness.commands import bench as cmd_bench
@@ -81,7 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
                 cmd_screenshot, cmd_audio, cmd_console, cmd_manifest,
                 cmd_backtrace, cmd_bench, cmd_sim, cmd_new, cmd_init,
                 cmd_create, cmd_add, cmd_remove, cmd_doctor, cmd_test, cmd_adversarial,
-                cmd_list_modules):
+                cmd_list_modules, cmd_cycle, cmd_verify):
         mod.add_subparser(sub, _add_common_flags)
 
     return parser
@@ -140,6 +142,10 @@ def main(argv: list[str] | None = None) -> int:
             exit_code = cmd_adversarial.run(args, output)
         elif args.command == "list-modules":
             exit_code = cmd_list_modules.run(args, output)
+        elif args.command == "cycle":
+            exit_code = cmd_cycle.run(args, output)
+        elif args.command == "verify":
+            exit_code = cmd_verify.run(args, output)
         else:
             parser.print_help(sys.stderr)
             exit_code = CLI_MISUSE
