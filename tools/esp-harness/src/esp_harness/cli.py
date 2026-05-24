@@ -41,6 +41,7 @@ from esp_harness.commands import console as cmd_console
 from esp_harness.commands import doctor as cmd_doctor
 from esp_harness.commands import manifest as cmd_manifest
 from esp_harness.commands import flash as cmd_flash
+from esp_harness.commands import create as cmd_create
 from esp_harness.commands import init as cmd_init   # v1.4 compat alias for `new`
 from esp_harness.commands import monitor as cmd_monitor
 from esp_harness.commands import new as cmd_new
@@ -76,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     for mod in (cmd_port, cmd_build, cmd_flash, cmd_monitor, cmd_run, cmd_tap,
                 cmd_screenshot, cmd_audio, cmd_console, cmd_manifest,
                 cmd_backtrace, cmd_bench, cmd_sim, cmd_new, cmd_init,
-                cmd_doctor, cmd_test, cmd_adversarial):
+                cmd_create, cmd_doctor, cmd_test, cmd_adversarial):
         mod.add_subparser(sub, _add_common_flags)
 
     return parser
@@ -121,6 +122,8 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "init":
             # v1.4 alias: forward to `new` with the same args (back-compat).
             exit_code = cmd_init.run(args, output)
+        elif args.command == "create":
+            exit_code = cmd_create.run(args, output)
         elif args.command == "doctor":
             exit_code = cmd_doctor.run(args, output)
         elif args.command == "test":
