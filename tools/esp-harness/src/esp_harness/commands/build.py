@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 from esp_harness.core import idf_runner, patches
+from esp_harness.core.config import load_config
 from esp_harness.exit_codes import BUILD_FAILED, OK, PROJECT_NOT_FOUND
 from esp_harness.output import Output
 
@@ -78,7 +79,14 @@ def _find_artifacts(project_dir: Path) -> dict[str, str]:
 
 
 def run(args: argparse.Namespace, output: Output) -> int:
-    project = Path(args.project).resolve()
+    cfg = load_config()
+    # If --project was not explicitly provided (still the default cwd),
+    # prefer the harness.json config_path as the project root.
+    raw_project = args.project
+    if cfg and raw_project == Path.cwd():
+        project = cfg.config_path.resolve()
+    else:
+        project = Path(raw_project).resolve()
     if not (project / "CMakeLists.txt").is_file():
         output.failure(
             exit_code=PROJECT_NOT_FOUND,

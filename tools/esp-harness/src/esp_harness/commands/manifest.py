@@ -32,6 +32,7 @@ from dataclasses import dataclass, field
 
 from esp_harness import __version__
 from esp_harness.core import ports as ports_mod
+from esp_harness.core.config import load_config
 from esp_harness.core.console_session import ConsoleSession
 from esp_harness.exit_codes import (
     AMBIGUOUS_DEVICE,
@@ -120,6 +121,42 @@ TOOLKIT_COMMANDS: list[dict[str, object]] = [
         "args": ["[--no-device]"],
         "exit_codes": [0, 10],
         "notes": "Run me first in every new AI session.",
+    },
+    {
+        "name": "create",
+        "summary": "Scaffold a new project with harness.json.",
+        "args": ["<name>", "[--board BOARD]", "[--port PORT]"],
+        "exit_codes": [0, 1],
+    },
+    {
+        "name": "cycle",
+        "summary": "Execute the full build-flash-verify loop from harness.json.",
+        "args": [],
+        "exit_codes": [0, 20, 30, 50, 51],
+    },
+    {
+        "name": "verify",
+        "summary": "Screenshot device and report pass/fail.",
+        "args": ["[--port PORT]", "[--out PATH]"],
+        "exit_codes": [0, 10, 50],
+    },
+    {
+        "name": "add",
+        "summary": "Add a module to the project (creates files + updates harness.json).",
+        "args": ["<module>"],
+        "exit_codes": [0, 1, 21],
+    },
+    {
+        "name": "remove",
+        "summary": "Remove a module from the project.",
+        "args": ["<module>"],
+        "exit_codes": [0, 1, 21],
+    },
+    {
+        "name": "list-modules",
+        "summary": "Show available modules and their install status.",
+        "args": [],
+        "exit_codes": [0],
     },
     {
         "name": "backtrace",
@@ -278,12 +315,10 @@ def run(args: argparse.Namespace, output: Output) -> int:
         "toolkit_version": __version__,
         "toolkit_commands": TOOLKIT_COMMANDS,
         "convention": {
-            "bootstrap": [
-                "Run `esp-harness manifest --json` at session start.",
-                "Read toolkit/AGENT.md 'Gotchas' for prose-only knowledge.",
-                "Anything not in this manifest does not exist for you — "
-                "don't grep source code looking for it.",
-            ],
+            "bootstrap": ["Run esp-harness manifest --json at session start."],
+            "cycle": "esp-harness cycle",
+            "add_scene": "Create main/scenes/scene_<name>.c, register in app_main.c, rebuild.",
+            "add_command": "console_protocol_register() in app code. Auto-surfaces in manifest.",
         },
     }
 
@@ -306,6 +341,18 @@ def run(args: argparse.Namespace, output: Output) -> int:
             }
     else:
         manifest["device"] = {"available": False, "skipped": True}
+
+    cfg = load_config()
+    project_section = None
+    if cfg:
+        project_section = {
+            "name": cfg.name,
+            "board": cfg.board,
+            "port": cfg.port,
+            "modules": cfg.enabled_modules(),
+            "cycle": cfg.agent_cycle,
+        }
+    manifest["project"] = project_section
 
     elapsed_ms = int((time.monotonic() - started) * 1000)
     manifest["elapsed_ms"] = elapsed_ms

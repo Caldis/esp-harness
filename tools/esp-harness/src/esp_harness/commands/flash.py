@@ -9,6 +9,7 @@ from pathlib import Path
 
 from esp_harness.core import idf_runner
 from esp_harness.core import ports as ports_mod
+from esp_harness.core.config import load_config
 from esp_harness.exit_codes import (
     AMBIGUOUS_DEVICE,
     DEVICE_BUSY,
@@ -61,6 +62,8 @@ def _resolve_port(requested: str | None, output: Output) -> tuple[str | None, in
 
 
 def run(args: argparse.Namespace, output: Output) -> int:
+    cfg = load_config()
+
     project = Path(args.project).resolve()
     if not (project / "CMakeLists.txt").is_file():
         output.failure(
@@ -69,7 +72,12 @@ def run(args: argparse.Namespace, output: Output) -> int:
         )
         return PROJECT_NOT_FOUND
 
-    port, code = _resolve_port(args.port, output)
+    # Harness.json port fallback: use config port if --port not explicitly given
+    port_override = getattr(args, "port", None)
+    if not port_override and cfg and cfg.port:
+        port_override = cfg.port
+
+    port, code = _resolve_port(port_override, output)
     if port is None:
         return code
 

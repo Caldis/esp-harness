@@ -25,6 +25,7 @@ except ImportError as e:
 
 from esp_harness.core import console_session
 from esp_harness.core import ports as ports_mod
+from esp_harness.core.config import load_config
 from esp_harness.exit_codes import (
     AMBIGUOUS_DEVICE,
     DEVICE_BUSY,
@@ -117,7 +118,13 @@ def _resolve_port(requested: str | None, output: Output) -> tuple[str | None, in
 
 
 def run(args: argparse.Namespace, output: Output) -> int:
-    port, code = _resolve_port(args.port, output)
+    # Harness.json port fallback: use config port if --port not explicitly given
+    cfg = load_config()
+    port_override = getattr(args, "port", None)
+    if not port_override and cfg and cfg.port:
+        port_override = cfg.port
+
+    port, code = _resolve_port(port_override, output)
     if port is None:
         return code
 
